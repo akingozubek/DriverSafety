@@ -1,15 +1,11 @@
-# USAGE
-# python detect_drowsiness.py --shape-predictor shape_predictor_68_face_landmarks.dat
-# python detect_drowsiness.py --shape-predictor shape_predictor_68_face_landmarks.dat --alarm alarm.wav
-
 # import the necessary packages
 from scipy.spatial import distance as dist
+from threading import Thread
 from imutils.video import VideoStream
 from imutils import face_utils
-from threading import Thread
+import imutils
 import numpy as np
 import playsound
-import imutils
 import time
 import cv2
 import dlib
@@ -162,3 +158,18 @@ while True:
 # do a bit of cleanup
 cv2.destroyAllWindows()
 vs.stop()
+
+
+#2. Gün
+#	Yawn detect deleted because we decide for it is not required
+# 	small changing detect drowsiness and add blocked camera control  
+# Add voice warning - if driver's eyes closed or camera is blocked
+# Collect data for smoke control.
+
+#3. Gün
+#Veri gerekirse toplamaya devam.
+#Verileri LabelImg ile ayarla.
+#Yolo ile Sigara-Telefon Tespiti yap
+#Sürücünün kafası yoldan farklı yere dönükse uyarı ver
+# (şuan için ->Yolo ile insanı tespit et-diğer modelde yüz tespiti olmaz, yolo da person olursa sürücü başka yere bakıyor
+#yaklaşık 5 saniye farklı yöne bakarsa uyar.)

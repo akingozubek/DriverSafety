@@ -1,0 +1,6 @@
+scipy==1.5.2
+imutils==0.5.3
+numpy==1.19.1
+playsound==1.2.2
+opencv-python==4.3.0.36
+dlib==19.20.0
