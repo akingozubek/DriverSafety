@@ -6,10 +6,9 @@
 from scipy.spatial import distance as dist
 from imutils.video import VideoStream
 from imutils import face_utils
-from threading import Thread,Condition
+from threading import Thread
 import numpy as np
 import playsound
-import argparse
 import imutils
 import time
 import cv2
@@ -139,8 +138,6 @@ while True:
 				time.sleep(3.0)
 
 				# draw an alarm on the frame
-				cv2.putText(frame, "DROWSINESS ALERT!", (10, 30),
-					cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
 		# otherwise, the eye aspect ratio is not below the blink
 		# threshold, so reset the counter and alarm
@@ -151,7 +148,7 @@ while True:
 		# draw the computed eye aspect ratio on the frame to help
 		# with debugging and setting the correct eye aspect ratio
 		# thresholds and frame counters
-		cv2.putText(frame, "EAR: {:.2f}".format(ear), (300, 30),
+		cv2.putText(frame, "EYES-AR: {:.2f}".format(ear), (300, 30),
 			cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
 	# show the frame
