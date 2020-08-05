@@ -6,7 +6,7 @@
 from scipy.spatial import distance as dist
 from imutils.video import VideoStream
 from imutils import face_utils
-from threading import Thread
+from threading import Thread,Condition
 import numpy as np
 import playsound
 import argparse
@@ -15,9 +15,9 @@ import time
 import cv2
 import dlib
 
-def sound_alarm(path):
+def warning_alert(file):
 	# play an alarm sound
-	playsound.playsound(path)
+	playsound.playsound(file)
 
 def eye_aspect_ratio(eye):
 	# compute the euclidean distances between the two sets of
@@ -39,13 +39,14 @@ def eye_aspect_ratio(eye):
 # blink and then a second constant for the number of consecutive
 # frames the eye must be below the threshold for to set off the
 # alarm
-EYE_AR_THRESH = 0.25#orj 0.3
+EYE_AR_THRESH = 0.25
 EYE_AR_CONSEC_FRAMES = 40
 
 # initialize the frame counter as well as a boolean used to
 # indicate if the alarm is going off
 COUNTER = 0
-ALARM_ON = False
+COVER_COUNTER=0
+##ALARM_ON = False
 
 # initialize dlib's face detector (HOG-based) and then create
 # the facial landmark predictor
@@ -65,15 +66,25 @@ vs = VideoStream(0).start()
 time.sleep(1.0)
 
 
+
 # loop over frames from the video stream
 while True:
 	# grab the frame from the threaded video file stream, resize
 	# it, and convert it to grayscale
 	# channels)
 	frame = vs.read()
-	frame = imutils.resize(frame, width=450)
+	frame = imutils.resize(frame, width=450,height=450)
 	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
+	if not gray.any():
+		COVER_COUNTER+=1
+		if COVER_COUNTER>5:
+			t1 = Thread(target=warning_alert,args=("BlockedCameraWarning.mp3",))
+			t1.daemon = True
+			t1.start()
+			time.sleep(3.0)
+	else:
+		COVER_COUNTER=0
 	# detect faces in the grayscale frame
 	rects = detector(gray, 0)
 
@@ -101,8 +112,8 @@ while True:
 		# visualize each of the eyes
 		leftEyeHull = cv2.convexHull(leftEye)
 		rightEyeHull = cv2.convexHull(rightEye)
-		cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
-		cv2.drawContours(frame, [rightEyeHull], -1, (0, 255, 0), 1)
+		##cv2.drawContours(frame, [leftEyeHull], -1, (0, 255, 0), 1)
+		##cv2.drawContours(frame, [rightEyeHull], -1, (0, 255, 0), 1)
 
 		# check to see if the eye aspect ratio is below the blink
 		# threshold, and if so, increment the blink frame counter
@@ -113,17 +124,19 @@ while True:
 			# then sound the alarm
 			if COUNTER >= EYE_AR_CONSEC_FRAMES:
 				# if the alarm is not on, turn it on
-				if not ALARM_ON:
-					ALARM_ON = True
+				##if not ALARM_ON:
+				##	ALARM_ON = True
 
 					# check to see if an alarm file was supplied,
 					# and if so, start a thread to have the alarm
 					# sound played in the background
-					if ALARM_ON:
-						t = Thread(target=sound_alarm,
-							args=("drowsiness.mp3",))
-						t.deamon = True
-						t.start()
+					#if ALARM_ON:
+				cv2.imwrite("frame.jpg",frame)
+				t2 = Thread(target=warning_alert,
+					args=("drowsiness.mp3",))
+				t2.daemon = True
+				t2.start()
+				time.sleep(3.0)
 
 				# draw an alarm on the frame
 				cv2.putText(frame, "DROWSINESS ALERT!", (10, 30),
@@ -133,7 +146,7 @@ while True:
 		# threshold, so reset the counter and alarm
 		else:
 			COUNTER = 0
-			ALARM_ON = False		
+			##ALARM_ON = False		
 
 		# draw the computed eye aspect ratio on the frame to help
 		# with debugging and setting the correct eye aspect ratio
