@@ -47,17 +47,16 @@ COVER_COUNTER=0
 # the facial landmark predictor
 print("[INFO] loading facial landmark predictor...")
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("Models/shape_predictor_68_face_landmarks.dat")
 
 # grab the indexes of the facial landmarks for the left and
 # right eye, respectively
 (lStart, lEnd) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
 (rStart, rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
-(mouthStart,mouthEnd)=face_utils.FACIAL_LANDMARKS_IDXS["mouth"]
 
 # start the video stream thread
 print("[INFO] starting video stream thread...")
-vs = VideoStream(0).start()
+cam=cv2.VideoCapture(0)
 time.sleep(1.0)
 
 
@@ -67,14 +66,20 @@ while True:
 	# grab the frame from the threaded video file stream, resize
 	# it, and convert it to grayscale
 	# channels)
-	frame = vs.read()
-	frame = imutils.resize(frame, width=450,height=450)
+	ret,frame=cam.read()
+	if not ret:
+		break
+	
+	frame = imutils.resize(frame, width=450)
+
+	height,width,_=frame.shape
+	
 	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
 	if not gray.any():
 		COVER_COUNTER+=1
 		if COVER_COUNTER>5:
-			t1 = Thread(target=warning_alert,args=("BlockedCameraWarning.mp3",))
+			t1 = Thread(target=warning_alert,args=("Sounds/BlockedCameraWarning.mp3",))
 			t1.daemon = True
 			t1.start()
 			time.sleep(3.0)
@@ -128,7 +133,7 @@ while True:
 					#if ALARM_ON:
 				cv2.imwrite("frame.jpg",frame)
 				t2 = Thread(target=warning_alert,
-					args=("drowsiness.mp3",))
+					args=("Sounds/drowsiness.mp3",))
 				t2.daemon = True
 				t2.start()
 				time.sleep(3.0)
@@ -146,18 +151,17 @@ while True:
 		# thresholds and frame counters
 		cv2.putText(frame, "EYES-AR: {:.2f}".format(ear), (300, 30),
 			cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
 	# show the frame
 	cv2.imshow("Frame", frame)
 	key = cv2.waitKey(10) & 0xFF
- 
+	
 	# if the `q` key was pressed, break from the loop
 	if key == 27:
 		break
 
 # do a bit of cleanup
+cam.release()
 cv2.destroyAllWindows()
-vs.stop()
 
 
 #2. Gün
