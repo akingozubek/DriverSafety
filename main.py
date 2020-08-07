@@ -162,18 +162,3 @@ while True:
 # do a bit of cleanup
 cam.release()
 cv2.destroyAllWindows()
-
-
-#2. Gün
-#	Yawn detect deleted because we decide for it is not required
-# 	small changing detect drowsiness and add blocked camera control  
-# Add voice warning - if driver's eyes closed or camera is blocked
-# Collect data for smoke control.
-
-#3. Gün
-#Veri gerekirse toplamaya devam.
-#Verileri LabelImg ile ayarla.
-#Yolo ile Sigara-Telefon Tespiti yap
-#Sürücünün kafası yoldan farklı yere dönükse uyarı ver
-# (şuan için ->Yolo ile insanı tespit et-diğer modelde yüz tespiti olmaz, yolo da person olursa sürücü başka yere bakıyor
-#yaklaşık 5 saniye farklı yöne bakarsa uyar.)

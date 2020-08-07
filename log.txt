@@ -1,0 +1,10 @@
+08/07/20 15:57:12 Camera Opened
+08/07/20 15:58:22 Camera Blocked
+08/07/20 15:58:59 Camera Closed
+08/07/20 16:00:46 Camera Opened
+08/07/20 16:01:15 Camera Closed
+08/07/20 16:01:29 Camera Opened
+08/07/20 16:01:42 drowsiness
+08/07/20 16:02:52 Camera Blocked
+08/07/20 16:03:10 drowsiness
+08/07/20 16:03:17 Camera Closed
