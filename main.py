@@ -56,7 +56,7 @@ predictor = dlib.shape_predictor("Models/shape_predictor_68_face_landmarks.dat")
 
 # start the video stream thread
 print("[INFO] starting video stream thread...")
-cam=cv2.VideoCapture(0)
+cam=cv2.VideoCapture("Driver Drowsiness Detection with OpenCV.mp4")
 time.sleep(1.0)
 
 
@@ -131,7 +131,6 @@ while True:
 					# and if so, start a thread to have the alarm
 					# sound played in the background
 					#if ALARM_ON:
-				cv2.imwrite("frame.jpg",frame)
 				t2 = Thread(target=warning_alert,
 					args=("Sounds/drowsiness.mp3",))
 				t2.daemon = True
