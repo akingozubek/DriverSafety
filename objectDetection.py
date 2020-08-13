@@ -1,12 +1,12 @@
 import cv2
 import numpy as np
 
-net=cv2.dnn.readNet("yolov3.weights","yolov3.cfg")
-#net=cv2.dnn.readNet("yolov3-tiny_last.weights","yolov3-tiny.cfg")
+#net=cv2.dnn.readNet("Models/yolov3.weights","Models/yolov3.cfg")
+net=cv2.dnn.readNet("Models/yolov3-tiny.weights","Models/yolov3-tiny.cfg")
 
 classes=[]
 
-with open("coco.names","r") as f:
+with open("Models/coco.names","r") as f:
     classes=f.read().splitlines()
 #with open("smoke.names","r") as f:
 #    classes=f.read().splitlines()

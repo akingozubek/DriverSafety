@@ -1,28 +1,31 @@
 # import the necessary packages
-from scipy.spatial import distance as dist
+import os
+import time
 from threading import Thread
-from gtts import gTTS
-from imutils.video import VideoStream
-from imutils import face_utils
+
+import cv2
+import dlib
 import imutils
 import numpy as np
 import playsound
-import time
-import cv2
-import dlib
-import os
-
+from gtts import gTTS
+from imutils import face_utils
+from imutils.video import VideoStream
+from scipy.spatial import distance as dist
 
 #Sesler->Sounds Klasöründe
 #Modeller->Models Klasöründe
 #Resimler->Images Klasörüne
 
+#darknet.exe detector train data/phone_smoke.data yolo-obj-tiny-v3.cfg backup/yolo-obj-tiny-v3_last.weights
+
 class DriverSafety():
 
     def __init__(self,camera=0):
-        
+
+        #Eyes aspect ratio thresholds and frame count
         self.EYE_AR_THRESH = 0.25#+- changeable
-        self.EYE_AR_CONSEC_FRAMES = 25#+- changeable
+        self.EYE_AR_CONSEC_FRAMES = 5#+- changeable
 
         #Counters
         self.COUNTER=0
@@ -31,13 +34,13 @@ class DriverSafety():
         self.SMOKE_COUNTER=0
         self.PHONE_COUNTER=0
 
-        #camera
+        #camera and text font
         self.camera=cv2.VideoCapture(camera)
+        self.font=cv2.FONT_HERSHEY_PLAIN
 
         #log and image save adaptibility
         self.last_err=""
         self.last_err_time=0
-        self.log_time=0
 
         #Files Paths
         #self.alert_path="Sounds/"
@@ -51,97 +54,62 @@ class DriverSafety():
         
         #yolo models-facial ladmarks models
         self.models()
-        self.facialLandmarksIDX()
-        self.readObjectClassNames()
 
         #start camera
         self.startThreads(self.startVideoStream,args_=(self.camera,))
 
+
     #create directory if is not exist.
     def createPath(self,path):
+
         try:
             os.mkdir(path)
             return path
         except FileExistsError:
             return path
             
+
+    #Yolo Models/Facial Landmarks
+    def models(self):
+        
+        #dlib model
+        self.face_landmarks=self.models_path+"shape_predictor_68_face_landmarks.dat"
+        self.detector=dlib.get_frontal_face_detector()
+        self.predictor=dlib.shape_predictor(self.face_landmarks)
+        
+        #eyes location index
+        (self.lStart, self.lEnd) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
+        (self.rStart, self.rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
+        
+        #yolo model
+        self.net=cv2.dnn.readNet(self.models_path+"yolo-obj-tiny-v3_1000.weights",self.models_path+"yolo-obj-tiny-v3.cfg")
+
+        #classes
+        with open(self.models_path+"phone_smoke.names","r") as f:
+            self.classes=f.read().splitlines()
+
+
     #threads start function
     def startThreads(self,target_,args_=()):
+
         t=Thread(target=target_,args=args_)
         t.daemon=True
         t.start()
         t.join()
 
-    #play warning sounds
-    def warning(self,file):
-        path=self.alert_path+file
-        playsound.playsound(path)
-    #Yolo Models/Facial Landmarks
-    def models(self):
-        self.face_landmarks=self.models_path+"shape_predictor_68_face_landmarks.dat"
-        self.detector=dlib.get_frontal_face_detector()
-        self.predictor=dlib.shape_predictor(self.face_landmarks)
-        self.net=cv2.dnn.readNet(self.models_path+"yolov3-tiny.weights",self.models_path+"yolov3-tiny.cfg")
-
-
-    def facialLandmarksIDX(self):
-        landmarks_3d_list = [
-            np.array([
-                [ 0.000,  0.000,   0.000],    # Nose tip
-                [ 0.000, -8.250,  -1.625],    # Chin
-                [-5.625,  4.250,  -3.375],    # Left eye left corner
-                [ 5.625,  4.250,  -3.375],    # Right eye right corner
-                [-3.750, -3.750,  -3.125],    # Left Mouth corner
-                [ 3.750, -3.750,  -3.125]     # Right mouth corner 
-            ], dtype=np.double),
-            np.array([
-                [ 0.000000,  0.000000,  6.763430],   # 52 nose bottom edge
-                [ 6.825897,  6.760612,  4.402142],   # 33 left brow left corner
-                [ 1.330353,  7.122144,  6.903745],   # 29 left brow right corner
-                [-1.330353,  7.122144,  6.903745],   # 34 right brow left corner
-                [-6.825897,  6.760612,  4.402142],   # 38 right brow right corner
-                [ 5.311432,  5.485328,  3.987654],   # 13 left eye left corner
-                [ 1.789930,  5.393625,  4.413414],   # 17 left eye right corner
-                [-1.789930,  5.393625,  4.413414],   # 25 right eye left corner
-                [-5.311432,  5.485328,  3.987654],   # 21 right eye right corner
-                [ 2.005628,  1.409845,  6.165652],   # 55 nose left corner
-                [-2.005628,  1.409845,  6.165652],   # 49 nose right corner
-                [ 2.774015, -2.080775,  5.048531],   # 43 mouth left corner
-                [-2.774015, -2.080775,  5.048531],   # 39 mouth right corner
-                [ 0.000000, -3.116408,  6.097667],   # 45 mouth central bottom corner
-                [ 0.000000, -7.415691,  4.070434]    # 6 chin corner
-            ], dtype=np.double),
-            np.array([
-                [ 0.000000,  0.000000,  6.763430],   # 52 nose bottom edge
-                [ 5.311432,  5.485328,  3.987654],   # 13 left eye left corner
-                [ 1.789930,  5.393625,  4.413414],   # 17 left eye right corner
-                [-1.789930,  5.393625,  4.413414],   # 25 right eye left corner
-                [-5.311432,  5.485328,  3.987654]    # 21 right eye right corner
-            ], dtype=np.double)
-        ]
-    
-    # 2d facial landmark list
-        lm_2d_index_list = [
-            [30, 8, 36, 45, 48, 54],
-            [33, 17, 21, 22, 26, 36, 39, 42, 45, 31, 35, 48, 54, 57, 8], # 14 points
-            [33, 36, 39, 42, 45] # 5 points
-        ]
-        (self.lStart, self.lEnd) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
-        (self.rStart, self.rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
-
-        
 
     #Camera Run
     def startVideoStream(self,camera):
         
         time.sleep(2.0)#waiting for camera build up
+
         self.logFile("Camera Opened")#Camera Open Log
         
-
         while True:
+
             ret,self.frame=camera.read()#read camera 
             
-            #if camera no respond, close system
+            #if camera does not respond, shuts down system
             if not ret:
                 break
 
@@ -151,37 +119,38 @@ class DriverSafety():
             self.frame = imutils.resize(self.frame, width=480,height=480)
             #grayscale frame
             self.gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
-            #self.frame=np.dstack([self.gray,self.gray,self.gray])
             
             #if camera is blocked ->changeable
             if not self.gray.any():
                 self.startThreads(self.controlCameraBlocked)
- 
+
+            if np.mean(self.gray)/255 < 0.5:
+                self.gray=cv2.equalizeHist(self.gray)
+
             
             #start object detection control, facial landmarks control and driver attention detection
             self.startThreads(self.objectDetection)
             self.startThreads(self.faceAndEyesDetection)
+
             self.startThreads(self.attentionDetection)
+            self.startThreads(self.phoneDetection)
+            #self.startThreads(self.smokeDetection)
 
             #show camera
-            cv2.imshow("Camera",self.frame)
+            cv2.imshow("Camera",self.gray)
             
             #press ESC or Q close camera
             self.key=cv2.waitKey(1) & 0xff
             if self.key==27 or self.key==ord("q"):
                 break
+
         #stop processing
         self.stopVideoStream()
-    
-    #put text camera screen, may be deleted
-    def putTextVideoStream(self,text,value,x,y):
-        font=cv2.FONT_HERSHEY_PLAIN
-        cv2.putText(self.frame, text+ " : {:.3f}".format(value), (x, y),
-        font, 2, (0, 0, 0), 2)
-    
-    
-    #if camera blocked, when reach specified time, run warning and save image. 
+
+
     def controlCameraBlocked(self):
+
+        #if camera blocked, when reach specified time, run warning and save image. 
         self.COVER_COUNTER+=1
         if self.COVER_COUNTER>5:
             time.sleep(1.0)
@@ -190,12 +159,7 @@ class DriverSafety():
             #time.sleep(5.0)
         if self.gray.any():
             self.COVER_COUNTER=0
-            
-    #will be detected objects.
-    def readObjectClassNames(self):
-        with open(self.models_path+"coco.names","r") as f:
-            self.classes=f.read().splitlines()
-        
+
 
     #Yolo Object Detection
     def objectDetection(self):
@@ -219,7 +183,6 @@ class DriverSafety():
             for detection in out:
                 score=detection[5:]
                 class_id=np.argmax(score)#object index
-                self.control_class_id=class_id.copy()#objects control variable
                 confidence=score[class_id]#score is detected object
                 
                 #if score %50 coordination and boxes process
@@ -236,12 +199,13 @@ class DriverSafety():
                     boxes.append([x,y,w,h])
                     confidences.append(float(confidence))
                     class_ids.append(class_id)
-
+        self.control_class_id=class_ids.copy()
 
         idx=cv2.dnn.NMSBoxes(boxes,confidences,0.5,0.4)
         colors=np.random.uniform(0,255,size=(len(boxes),3))
        
         #show boxes and text
+        #try:
         try:
             for i in idx.flatten():
                 x,y,w,h=boxes[i]
@@ -249,53 +213,23 @@ class DriverSafety():
                 confidence=str(round(confidences[i],2))
                 color=colors[i]
                 cv2.rectangle(self.frame,(x,y),(x+w,y+h),color,1)
-                cv2.putText(self.frame,label+" : "+confidence,(x,y+20),font,2,(255,255,255),2)
-                #self.putTextVideoStream(label,confidence,x,y+10)
+                cv2.putText(self.frame,label+confidence,(x,y+20),self.font,2,(255,255,255),2)
+            #self.putTextVideoStream(label,confidence,x,y+10)
         except:
             pass
 
-    #if driver look another direction long time, run warning and save image
-    def attentionDetection(self):
-        try:
-            if not self.rects and self.control_class_id==0:
-                self.ATTENTION_COUNTER+=1
-                if self.ATTENTION_COUNTER>30:
-                    self.warning("AttentionWarning.mp3")
-                    self.saveImage(self.frame,"Attention")
-                    #time.sleep(5.0)
-            else:
-                self.ATTENTION_COUNTER=0
-        except:
-            pass
 
-    #if detect cigarette, run warning and save image
-    def smokeDetection(self):
-        try:
-            if self.control_class_id==3:
-                self.SMOKE_COUNTER+=1
-                if self.SMOKE_COUNTER>10:
-                    self.warning("SmokeWarning")
-                    self.saveImage(self.frame,"Smoke")
-                    #time.sleep(5.0)
-            else:
-                self.SMOKE_COUNTER=0
-        except:
-            pass
+    #Calculate eyee aspect ratio
+    def findEyeAspectRatio(self,eye):
 
-    #if detect phone, run warning and save image    
-    def phoneDetection(self):
-        try:
-            if self.control_class_id==2:
-                self.PHONE_COUNTER+=1
-                if self.PHONE_COUNTER>10:
-                    self.warning("PhoneWarning.mp3")
-                    self.saveImage(self.frame,"Phone")
-                    #time.sleep(5.0)
-            else:
-                self.PHONE_COUNTER=0
-        except:
-            pass
-    
+        first_height = dist.euclidean(eye[1], eye[5])
+        second_height = dist.euclidean(eye[2], eye[4])
+        eye_width = dist.euclidean(eye[0], eye[3])
+
+        self.eye_aspect_ratio = (first_height + second_height) / (2.0 * eye_width)
+
+        return self.eye_aspect_ratio
+
     #Face and Eye detection with dlib
     def faceAndEyesDetection(self):
 
@@ -317,16 +251,59 @@ class DriverSafety():
             self.drowsinessDetection(ear)
             self.putTextVideoStream("EAR",ear,250,30)
 
-    #Calculate eyee aspect ratio
-    def findEyeAspectRatio(self,eye):
 
-        first_height = dist.euclidean(eye[1], eye[5])
-        second_height = dist.euclidean(eye[2], eye[4])
-        eye_width = dist.euclidean(eye[0], eye[3])
+    #if driver look another direction long time, run warning and save image
+    def attentionDetection(self):
 
-        self.eye_aspect_ratio = (first_height + second_height) / (2.0 * eye_width)
 
-        return self.eye_aspect_ratio
+        try:
+            control=True if 0 in self.control_class_id else False
+            if not self.rects and control:
+                self.ATTENTION_COUNTER+=1
+                if self.ATTENTION_COUNTER>5:
+                    self.warning("AttentionWarning.mp3")
+                    self.saveImage(self.frame,"Attention")
+                    #time.sleep(5.0)
+                    
+            else:
+                self.ATTENTION_COUNTER=0
+        except:
+            pass
+
+
+    #if detect cigarette, run warning and save image
+    def smokeDetection(self):
+
+        try:
+            control=True if 2 in self.control_class_id else False
+            if control:
+                self.SMOKE_COUNTER+=1
+                if self.SMOKE_COUNTER>10:
+                    self.warning("SmokeWarning.mp3")
+                    self.saveImage(self.frame,"Smoke")
+                    #time.sleep(5.0)
+            else:
+                self.SMOKE_COUNTER=0
+        except:
+            pass
+
+
+    #if detect phone, run warning and save image    
+    def phoneDetection(self):
+
+        try:
+            control=True if 67 in self.control_class_id else False
+            if control:
+                self.PHONE_COUNTER+=1
+                if self.PHONE_COUNTER>3:
+                    self.warning("PhoneWarning.mp3")
+                    self.saveImage(self.frame,"Phone")
+                    #time.sleep(5.0)
+            else:
+                self.PHONE_COUNTER=0
+        except:
+            pass
+
 
     #if eyes aspect ratio < identified threshold. run warning and save image.
     def drowsinessDetection(self,ear):
@@ -342,9 +319,17 @@ class DriverSafety():
         else:
             self.COUNTER = 0
 
+
     #time calculation will be added.
     def timeCounter(self):
         pass
+
+
+    #play warning sounds
+    def warning(self,file):
+        path=self.alert_path+file
+        playsound.playsound(path)
+
 
     #if detected any anomaly, save it.
     def saveImage(self,frame,err):
@@ -357,6 +342,7 @@ class DriverSafety():
         self.logFile(err)
         self.last_err=err
         self.last_err_time=time.time()
+
 
     def logFile(self,err):
 
@@ -374,11 +360,12 @@ class DriverSafety():
                 current_log=date+" "+_time+" "+err+"\n"
                 f.write(current_log)
         
-        
-   #aynıysa ->5~10 saniye sonra log tut.
-   #değilse ->hemen log tut.
 
-
+    #put text camera screen, may be deleted
+    def putTextVideoStream(self,text,value,x,y):
+        cv2.putText(self.frame, text+ " : {:.3f}".format(value), (x, y),
+        self.font, 2, (0, 0, 0), 2)
+    
    #create Sounds File -> may be deleted.
     def createSound(self,text,filename):
         voice=gTTS(text,lang="en")
