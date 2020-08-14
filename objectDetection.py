@@ -1,15 +1,13 @@
 import cv2
 import numpy as np
 
-#net=cv2.dnn.readNet("Models/yolov3.weights","Models/yolov3.cfg")
-net=cv2.dnn.readNet("Models/yolov3-tiny.weights","Models/yolov3-tiny.cfg")
+net=cv2.dnn.readNet("Models/yolov3_training_last.weights","Models/yolov3_testing.cfg")
+
 
 classes=[]
 
-with open("Models/coco.names","r") as f:
+with open("Models/phone_smoke.names","r") as f:
     classes=f.read().splitlines()
-#with open("smoke.names","r") as f:
-#    classes=f.read().splitlines()
 
 
 
@@ -48,12 +46,14 @@ while True:
                 class_ids.append(class_id)
             
     idx=cv2.dnn.NMSBoxes(boxes,confidences,0.5,0.4)
+    print(idx)
     font=cv2.FONT_HERSHEY_PLAIN
     colors=np.random.uniform(0,255,size=(len(boxes),3))
     try:
         for i in idx.flatten():
             x,y,w,h=boxes[i]
             label=str(classes[class_ids[i]])
+            print(label)
             confidence=str(round(confidences[i],2))
             color=colors[i]
             cv2.rectangle(img,(x,y),(x+w,y+h),color,1)

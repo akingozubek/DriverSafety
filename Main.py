@@ -82,9 +82,12 @@ class DriverSafety():
         (self.rStart, self.rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
         
         #yolo model
-        self.net=cv2.dnn.readNet(self.models_path+"yolo-obj-tiny-v3_1000.weights",self.models_path+"yolo-obj-tiny-v3.cfg")
+        self.net=cv2.dnn.readNet(self.models_path+"yolo-obj-tiny-v3_final.weights",self.models_path+"yolo-obj-tiny-v3.cfg")
+        #self.net=cv2.dnn.readNet(self.models_path+"yolov3.weights",self.models_path+"yolov3.cfg")
 
         #classes
+        #with open(self.models_path+"coco.names","r") as f:
+        #    self.classes=f.read().splitlines()
         with open(self.models_path+"phone_smoke.names","r") as f:
             self.classes=f.read().splitlines()
 
@@ -186,7 +189,7 @@ class DriverSafety():
                 confidence=score[class_id]#score is detected object
                 
                 #if score %50 coordination and boxes process
-                if confidence>0.5:
+                if confidence>0.2:
                     center_x=int(detection[0]*width)
                     center_y=int(detection[0]*height)
                     
@@ -212,8 +215,8 @@ class DriverSafety():
                 label=str(self.classes[class_ids[i]])
                 confidence=str(round(confidences[i],2))
                 color=colors[i]
-                cv2.rectangle(self.frame,(x,y),(x+w,y+h),color,1)
-                cv2.putText(self.frame,label+confidence,(x,y+20),self.font,2,(255,255,255),2)
+                cv2.rectangle(self.gray,(x,y),(x+w,y+h),color,1)
+                cv2.putText(self.gray,label+confidence,(x,y+20),self.font,2,(255,255,255),2)
             #self.putTextVideoStream(label,confidence,x,y+10)
         except:
             pass
@@ -363,7 +366,7 @@ class DriverSafety():
 
     #put text camera screen, may be deleted
     def putTextVideoStream(self,text,value,x,y):
-        cv2.putText(self.frame, text+ " : {:.3f}".format(value), (x, y),
+        cv2.putText(self.gray, text+ " : {:.3f}".format(value), (x, y),
         self.font, 2, (0, 0, 0), 2)
     
    #create Sounds File -> may be deleted.
@@ -384,3 +387,12 @@ class DriverSafety():
 
 if __name__=="__main__":
     driver=DriverSafety()
+
+
+
+
+
+
+#model eğitimi
+#senkronizasyon
+#süre ayarlaması
