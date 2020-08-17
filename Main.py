@@ -34,6 +34,7 @@ class DriverSafety():
         self.SMOKE_COUNTER=0
         self.PHONE_COUNTER=0
 
+
         #camera and text font
         self.camera=cv2.VideoCapture(camera)
         self.font=cv2.FONT_HERSHEY_PLAIN
@@ -56,7 +57,8 @@ class DriverSafety():
         self.models()
 
         #start camera
-        self.startThreads(self.startVideoStream,args_=(self.camera,))
+        self.startVideoStream(self.camera)
+        #self.startThreads(self.startVideoStream,args_=(self.camera,))
 
 
     #create directory if is not exist.
@@ -82,13 +84,13 @@ class DriverSafety():
         (self.rStart, self.rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
         
         #yolo model
-        self.net=cv2.dnn.readNet(self.models_path+"yolo-obj-tiny-v3_final.weights",self.models_path+"yolo-obj-tiny-v3.cfg")
+        self.net=cv2.dnn.readNet(self.models_path+"yolov3-tiny_training_1000.weights",self.models_path+"yolov3-tiny_testing.cfg")
         #self.net=cv2.dnn.readNet(self.models_path+"yolov3.weights",self.models_path+"yolov3.cfg")
 
         #classes
         #with open(self.models_path+"coco.names","r") as f:
         #    self.classes=f.read().splitlines()
-        with open(self.models_path+"phone_smoke.names","r") as f:
+        with open(self.models_path+"classes.names","r") as f:
             self.classes=f.read().splitlines()
 
 
@@ -206,7 +208,7 @@ class DriverSafety():
 
         idx=cv2.dnn.NMSBoxes(boxes,confidences,0.5,0.4)
         colors=np.random.uniform(0,255,size=(len(boxes),3))
-       
+    
         #show boxes and text
         #try:
         try:
@@ -261,6 +263,7 @@ class DriverSafety():
 
         try:
             control=True if 0 in self.control_class_id else False
+
             if not self.rects and control:
                 self.ATTENTION_COUNTER+=1
                 if self.ATTENTION_COUNTER>5:
@@ -283,7 +286,7 @@ class DriverSafety():
                 self.SMOKE_COUNTER+=1
                 if self.SMOKE_COUNTER>10:
                     self.warning("SmokeWarning.mp3")
-                    self.saveImage(self.frame,"Smoke")
+                    self.saveImage(self.frame,"Smoking")
                     #time.sleep(5.0)
             else:
                 self.SMOKE_COUNTER=0
@@ -310,14 +313,13 @@ class DriverSafety():
 
     #if eyes aspect ratio < identified threshold. run warning and save image.
     def drowsinessDetection(self,ear):
- 
+
         if ear < self.EYE_AR_THRESH:
             self.COUNTER += 1
 
             if self.COUNTER >= self.EYE_AR_CONSEC_FRAMES:
-                self.startThreads(target_=self.saveImage,args_=(self.frame,"drowsiness",))
-                self.startThreads(target_=self.warning,args_=("drowsiness.mp3",))
-
+                self.saveImage(self.frame,"Drowsiness")
+                self.warning("Drowsiness.mp3")
                 #time.sleep(3.0)
         else:
             self.COUNTER = 0
@@ -332,15 +334,17 @@ class DriverSafety():
     def warning(self,file):
         path=self.alert_path+file
         playsound.playsound(path)
+        time.sleep(2.0)
 
 
     #if detected any anomaly, save it.
     def saveImage(self,frame,err):
         if err==self.last_err:
             if self._time-self.last_err_time>5:
-                cv2.imwrite(self.save_image_path+err+".jpg",frame)
+                cv2.imwrite("{}/{}_{}.jpg".format(self.save_image_path,err,time.time()),frame)
         else:
-            cv2.imwrite(self.save_image_path+err+".jpg",frame)
+            cv2.imwrite("{}/{}_{}.jpg".format(self.save_image_path,err,time.time()),frame)
+
         
         self.logFile(err)
         self.last_err=err
@@ -369,10 +373,10 @@ class DriverSafety():
         cv2.putText(self.gray, text+ " : {:.3f}".format(value), (x, y),
         self.font, 2, (0, 0, 0), 2)
     
-   #create Sounds File -> may be deleted.
-    def createSound(self,text,filename):
-        voice=gTTS(text,lang="en")
-        voice.save("Sounds/"+filename)
+    #create Sounds File -> may be deleted.
+    #def createSound(self,text,filename):
+    #    voice=gTTS(text,lang="en")
+    #    voice.save("Sounds/"+filename)
 
     #release camera, close camera window and log it.
     def stopVideoStream(self):
@@ -396,3 +400,6 @@ if __name__=="__main__":
 #model eğitimi
 #senkronizasyon
 #süre ayarlaması
+
+"""
+"""

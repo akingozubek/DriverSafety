@@ -1,12 +1,12 @@
 import cv2
 import numpy as np
 
-net=cv2.dnn.readNet("Models/yolov3_training_last.weights","Models/yolov3_testing.cfg")
+net=cv2.dnn.readNet("Models/yolov3-tiny_training_1000.weights","Models/yolov3-tiny_testing.cfg")
 
 
 classes=[]
 
-with open("Models/phone_smoke.names","r") as f:
+with open("Models/classes.names","r") as f:
     classes=f.read().splitlines()
 
 
@@ -31,7 +31,7 @@ while True:
             score=detection[5:]
             class_id=np.argmax(score)
             confidence=score[class_id]
-            if confidence>0.5:
+            if confidence>0.1:
                 center_x=int(detection[0]*width)
                 center_y=int(detection[0]*height)
                 
