@@ -17,15 +17,13 @@ from scipy.spatial import distance as dist
 #Modeller->Models Klasöründe
 #Resimler->Images Klasörüne
 
-#darknet.exe detector train data/phone_smoke.data yolo-obj-tiny-v3.cfg backup/yolo-obj-tiny-v3_last.weights
-
 class DriverSafety():
 
     def __init__(self,camera=0):
 
         #Eyes aspect ratio thresholds and frame count
         self.EYE_AR_THRESH = 0.25#+- changeable
-        self.EYE_AR_CONSEC_FRAMES = 5#+- changeable
+        self.EYE_AR_CONSEC_FRAMES = 15#+- changeable
 
         #Counters
         self.COUNTER=0
@@ -48,7 +46,7 @@ class DriverSafety():
         #self.save_image_path="Images/"
         #self.models_path="Models/"
         
-        #Create some dictionary
+        #Create some directory
         self.alert_path=self.createPath("Sounds/")
         self.save_image_path=self.createPath("Images/")
         self.models_path=self.createPath("Models/")
@@ -84,20 +82,18 @@ class DriverSafety():
         (self.rStart, self.rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
         
         #yolo model
-        self.net=cv2.dnn.readNet(self.models_path+"yolov3-tiny_training_1000.weights",self.models_path+"yolov3-tiny_testing.cfg")
-        #self.net=cv2.dnn.readNet(self.models_path+"yolov3.weights",self.models_path+"yolov3.cfg")
+        #self.net=cv2.dnn.readNet(self.models_path+"yolov3-tiny_training_last.weights",self.models_path+"yolov3-tiny_testing.cfg")
+        self.net=cv2.dnn.readNet(self.models_path+"yolov3_training_last.weights",self.models_path+"yolov3_testing.cfg")
 
         #classes
-        #with open(self.models_path+"coco.names","r") as f:
-        #    self.classes=f.read().splitlines()
         with open(self.models_path+"classes.names","r") as f:
             self.classes=f.read().splitlines()
 
 
     #threads start function
-    def startThreads(self,target_,args_=()):
+    def startThreads(self,_target,_args=()):
 
-        t=Thread(target=target_,args=args_)
+        t=Thread(target=_target,args=_args)
         t.daemon=True
         t.start()
         t.join()
@@ -139,7 +135,7 @@ class DriverSafety():
 
             self.startThreads(self.attentionDetection)
             self.startThreads(self.phoneDetection)
-            #self.startThreads(self.smokeDetection)
+            self.startThreads(self.smokeDetection)
 
             #show camera
             cv2.imshow("Camera",self.gray)
@@ -159,8 +155,8 @@ class DriverSafety():
         self.COVER_COUNTER+=1
         if self.COVER_COUNTER>5:
             time.sleep(1.0)
-            self.warning("BlockedCameraWarning.mp3")
             self.saveImage(self.frame,"Camera Blocked")
+            self.warning("BlockedCameraWarning.mp3")
             #time.sleep(5.0)
         if self.gray.any():
             self.COVER_COUNTER=0
@@ -191,7 +187,7 @@ class DriverSafety():
                 confidence=score[class_id]#score is detected object
                 
                 #if score %50 coordination and boxes process
-                if confidence>0.2:
+                if confidence>0.5:
                     center_x=int(detection[0]*width)
                     center_y=int(detection[0]*height)
                     
@@ -215,6 +211,7 @@ class DriverSafety():
             for i in idx.flatten():
                 x,y,w,h=boxes[i]
                 label=str(self.classes[class_ids[i]])
+                print(label)
                 confidence=str(round(confidences[i],2))
                 color=colors[i]
                 cv2.rectangle(self.gray,(x,y),(x+w,y+h),color,1)
@@ -266,9 +263,9 @@ class DriverSafety():
 
             if not self.rects and control:
                 self.ATTENTION_COUNTER+=1
-                if self.ATTENTION_COUNTER>5:
-                    self.warning("AttentionWarning.mp3")
+                if self.ATTENTION_COUNTER>10:
                     self.saveImage(self.frame,"Attention")
+                    self.warning("AttentionWarning.mp3")
                     #time.sleep(5.0)
                     
             else:
@@ -284,9 +281,9 @@ class DriverSafety():
             control=True if 2 in self.control_class_id else False
             if control:
                 self.SMOKE_COUNTER+=1
-                if self.SMOKE_COUNTER>10:
-                    self.warning("SmokeWarning.mp3")
+                if self.SMOKE_COUNTER>5:
                     self.saveImage(self.frame,"Smoking")
+                    self.warning("SmokeWarning.mp3")
                     #time.sleep(5.0)
             else:
                 self.SMOKE_COUNTER=0
@@ -298,12 +295,12 @@ class DriverSafety():
     def phoneDetection(self):
 
         try:
-            control=True if 67 in self.control_class_id else False
+            control=True if 1 in self.control_class_id else False
             if control:
                 self.PHONE_COUNTER+=1
-                if self.PHONE_COUNTER>3:
-                    self.warning("PhoneWarning.mp3")
+                if self.PHONE_COUNTER>5:
                     self.saveImage(self.frame,"Phone")
+                    self.warning("PhoneWarning.mp3")
                     #time.sleep(5.0)
             else:
                 self.PHONE_COUNTER=0
@@ -324,12 +321,6 @@ class DriverSafety():
         else:
             self.COUNTER = 0
 
-
-    #time calculation will be added.
-    def timeCounter(self):
-        pass
-
-
     #play warning sounds
     def warning(self,file):
         path=self.alert_path+file
@@ -341,10 +332,13 @@ class DriverSafety():
     def saveImage(self,frame,err):
         if err==self.last_err:
             if self._time-self.last_err_time>5:
-                cv2.imwrite("{}/{}_{}.jpg".format(self.save_image_path,err,time.time()),frame)
+                img="{}/{}_{}.jpg".format(self.save_image_path,err,time.time())
+                cv2.imwrite(img,frame)
+                self.sendImage(image,True)
         else:
-            cv2.imwrite("{}/{}_{}.jpg".format(self.save_image_path,err,time.time()),frame)
-
+            img="{}/{}_{}.jpg".format(self.save_image_path,err,time.time())
+            cv2.imwrite(img,frame)
+            self.sendImage(image,True)
         
         self.logFile(err)
         self.last_err=err
@@ -372,11 +366,7 @@ class DriverSafety():
     def putTextVideoStream(self,text,value,x,y):
         cv2.putText(self.gray, text+ " : {:.3f}".format(value), (x, y),
         self.font, 2, (0, 0, 0), 2)
-    
-    #create Sounds File -> may be deleted.
-    #def createSound(self,text,filename):
-    #    voice=gTTS(text,lang="en")
-    #    voice.save("Sounds/"+filename)
+   
 
     #release camera, close camera window and log it.
     def stopVideoStream(self):
@@ -391,15 +381,3 @@ class DriverSafety():
 
 if __name__=="__main__":
     driver=DriverSafety()
-
-
-
-
-
-
-#model eğitimi
-#senkronizasyon
-#süre ayarlaması
-
-"""
-"""
