@@ -8,7 +8,6 @@ import dlib
 import imutils
 import numpy as np
 import playsound
-from gtts import gTTS
 from imutils import face_utils
 from imutils.video import VideoStream
 from scipy.spatial import distance as dist
@@ -56,7 +55,6 @@ class DriverSafety():
 
         #start camera
         self.startVideoStream(self.camera)
-        #self.startThreads(self.startVideoStream,args_=(self.camera,))
 
 
     #create directory if is not exist.
@@ -155,7 +153,7 @@ class DriverSafety():
         self.COVER_COUNTER+=1
         if self.COVER_COUNTER>5:
             time.sleep(1.0)
-            self.saveImage(self.frame,"Camera Blocked")
+            self.saveImage(self.frame,"Camera Blocked",5)
             self.warning("BlockedCameraWarning.mp3")
             #time.sleep(5.0)
         if self.gray.any():
@@ -263,8 +261,8 @@ class DriverSafety():
 
             if not self.rects and control:
                 self.ATTENTION_COUNTER+=1
-                if self.ATTENTION_COUNTER>10:
-                    self.saveImage(self.frame,"Attention")
+                if self.ATTENTION_COUNTER>5:
+                    self.saveImage(self.frame,"Attention",2)
                     self.warning("AttentionWarning.mp3")
                     #time.sleep(5.0)
                     
@@ -282,7 +280,7 @@ class DriverSafety():
             if control:
                 self.SMOKE_COUNTER+=1
                 if self.SMOKE_COUNTER>5:
-                    self.saveImage(self.frame,"Smoking")
+                    self.saveImage(self.frame,"Smoking",3)
                     self.warning("SmokeWarning.mp3")
                     #time.sleep(5.0)
             else:
@@ -299,7 +297,7 @@ class DriverSafety():
             if control:
                 self.PHONE_COUNTER+=1
                 if self.PHONE_COUNTER>5:
-                    self.saveImage(self.frame,"Phone")
+                    self.saveImage(self.frame,"Phone",4)
                     self.warning("PhoneWarning.mp3")
                     #time.sleep(5.0)
             else:
@@ -315,7 +313,7 @@ class DriverSafety():
             self.COUNTER += 1
 
             if self.COUNTER >= self.EYE_AR_CONSEC_FRAMES:
-                self.saveImage(self.frame,"Drowsiness")
+                self.saveImage(self.frame,"Drowsiness",1)
                 self.warning("Drowsiness.mp3")
                 #time.sleep(3.0)
         else:
@@ -329,19 +327,17 @@ class DriverSafety():
 
 
     #if detected any anomaly, save it.
-    def saveImage(self,frame,err):
-        if err==self.last_err:
+    def saveImage(self,frame,error,error_code):
+        if error==self.last_err:
             if self._time-self.last_err_time>5:
-                img="{}/{}_{}.jpg".format(self.save_image_path,err,time.time())
+                img="{}/{}_{}_{}.jpg".format(self.save_image_path,error_code,error,time.time())
                 cv2.imwrite(img,frame)
-                self.sendImage(image,True)
         else:
-            img="{}/{}_{}.jpg".format(self.save_image_path,err,time.time())
+            img="{}/{}_{}_{}.jpg".format(self.save_image_path,error_code,error,time.time())
             cv2.imwrite(img,frame)
-            self.sendImage(image,True)
         
-        self.logFile(err)
-        self.last_err=err
+        self.logFile(error)
+        self.last_err=error
         self.last_err_time=time.time()
 
 
