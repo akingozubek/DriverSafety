@@ -389,18 +389,26 @@ class DriverSafety():
         self.logFile(error)
         self.err=error
         
-        self.imagetoBase64(img)
+        base64_image=self.imagetoBase64()
+        
+        self.jsonData(img,base64_image)
 
     #image to base64 format    
-    def imagetoBase64(self,image):
+    def imagetoBase64(self):
         """
         Document will be added
         """
 
         flag,encoded_image=cv2.imencode(".jpg",self.frame)
         base64_image=base64.b64encode(encoded_image)
-        self.anomalies[image]=base64_image.decode("utf-8")
-    
+        base64_image=base64_image.decode("utf-8")
+        return base64_image
+
+    def jsonData(self,img,base64_image):
+        data={img:base64_image}
+        with open('jsonData.txt', 'a') as outfile:
+            json.dump(data, outfile)
+
     #logs
     def logFile(self,err):
         """ 
@@ -428,7 +436,6 @@ class DriverSafety():
         self.logFile("Camera Closed")
         self.camera.release()
         cv2.destroyAllWindows()
-        img_to_json=json.dumps(self.anomalies)
 
 
 
