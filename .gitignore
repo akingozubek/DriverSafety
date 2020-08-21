@@ -7,3 +7,7 @@
 *.names
 *.vscode
 log.txt
+app.py
+deneme.py
+detection.py
+__pycache__
