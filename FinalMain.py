@@ -26,7 +26,7 @@ class DriverSafety():
         """
         #Eyes aspect ratio thresholds and frame count
         self.EYE_AR_THRESH = 0.25#+- changeable
-        self.EYE_AR_CONSEC_FRAMES = 15#+- changeable
+        self.EYE_AR_CONSEC_FRAMES = 20#+- changeable
 
         #Counters
         self.COUNTER=0
@@ -38,7 +38,6 @@ class DriverSafety():
 
         #camera and text font
         self.camera=cv2.VideoCapture(camera)
-        self.font=cv2.FONT_HERSHEY_PLAIN
 
         #for saving all anomalies run time.
         self.anomalies=dict()
@@ -118,8 +117,6 @@ class DriverSafety():
         Document will be added.
         """
         time.sleep(2.0)#waiting for camera build up
-
-        self.logFile("Camera Opened")#Camera Open Log
         
         while True:
 
@@ -221,25 +218,6 @@ class DriverSafety():
                     class_ids.append(class_id)
         self.control_class_id=class_ids.copy()
 
-        idx=cv2.dnn.NMSBoxes(boxes,confidences,0.3,0.4)
-        colors=np.random.uniform(0,255,size=(len(boxes),3))
-    
-        #show boxes and text
-        #try:
-        try:
-            for i in idx.flatten():
-                x,y,w,h=boxes[i]
-                label=str(self.classes[class_ids[i]])
-                print(label)
-                confidence=str(round(confidences[i],2))
-                color=colors[i]
-                cv2.rectangle(self.gray,(x,y),(x+w,y+h),color,1)
-                cv2.putText(self.gray,label+confidence,(x,y+20),self.font,2,(255,255,255),2)
-            #self.putTextVideoStream(label,confidence,x,y+10)
-        except:
-            pass
-
-
     #Calculate eye aspect ratio
     def findEyeAspectRatio(self,eye):
         """ 
@@ -274,7 +252,6 @@ class DriverSafety():
             ear = (leftEAR + rightEAR) / 2.0
 
             self.drowsinessDetection(ear)
-            self.putTextVideoStream("EAR",ear,250,30)
 
 
     #if driver look another direction long time, run warning and save image
@@ -289,7 +266,7 @@ class DriverSafety():
             if not (not control or self.rects):
                 self.ATTENTION_COUNTER+=1
                 print("Attention:",self.ATTENTION_COUNTER)
-                if self.ATTENTION_COUNTER>10:
+                if self.ATTENTION_COUNTER>5:
                     self.errorTimeControl("Attention",2)
                     self.warning("AttentionWarning.mp3")
                     #time.sleep(5.0)
@@ -308,7 +285,7 @@ class DriverSafety():
             control=True if 2 in self.control_class_id else False
             if control:
                 self.SMOKE_COUNTER+=1
-                if self.SMOKE_COUNTER>10:
+                if self.SMOKE_COUNTER>5:
                     self.errorTimeControl("Smoking",3)
                     self.warning("SmokeWarning.mp3")
                     #time.sleep(5.0)
@@ -388,7 +365,6 @@ class DriverSafety():
         saved_img="{}/{}".format(self.save_image_path,img)
         cv2.imwrite(saved_img,self.frame)
         
-        self.logFile(error)
         self.err=error
         
         base64_image=self.imagetoBase64()
@@ -411,34 +387,13 @@ class DriverSafety():
         with open('jsonData.txt', 'a') as outfile:
             json.dump(data, outfile)
 
-    #logs
-    def logFile(self,err):
-        """ 
-        Document will be added.
-        """
-
-        date=time.strftime("%x")
-        _time=time.strftime("%X")
-        with open("log.txt","a") as f:
-            current_log="{} {} {}\n".format(date,_time,err)
-            f.write(current_log)
-        
-
-    #put text camera screen, may be deleted
-    def putTextVideoStream(self,text,value,x,y):
-        cv2.putText(self.gray, text+ " : {:.3f}".format(value), (x, y),
-        self.font, 2, (0, 0, 0), 2)
-   
-
     #release camera, close camera window and log it.
     def stopVideoStream(self):
         """ 
         Document will be added.
         """
-        self.logFile("Camera Closed")
         self.camera.release()
         cv2.destroyAllWindows()
-
 
 
 if __name__=="__main__":
