@@ -6,8 +6,8 @@
 *.dat
 *.names
 *.vscode
+*.json
 log.txt
-jsonData.txt
 app.py
 deneme.py
 detection.py
