@@ -1,4 +1,6 @@
 # import the necessary packages
+import base64
+import json
 import os
 import time
 from threading import Thread
@@ -10,8 +12,6 @@ import numpy as np
 import playsound
 from imutils import face_utils
 from imutils.video import VideoStream
-import base64
-import json
 from scipy.spatial import distance as dist
 
 #Sesler->Sounds Klasöründe
@@ -21,20 +21,17 @@ from scipy.spatial import distance as dist
 class DriverSafety():
 
     def __init__(self,camera=0):
-        """ 
-        Document will be added.
-        """
+
         #Eyes aspect ratio thresholds and frame count
-        self.EYE_AR_THRESH = 0.25#+- changeable
-        self.EYE_AR_CONSEC_FRAMES = 20#+- changeable
+        self.eye_ar_threshold = 0.25#+- changeable
+        self.eye_ar_consec_frame = 5#+- changeable
 
-        #Counters
-        self.COUNTER=0
-        self.COVER_COUNTER=0
-        self.ATTENTION_COUNTER=0
-        self.SMOKE_COUNTER=0
-        self.PHONE_COUNTER=0
-
+        #counters
+        self.drowsiness_counter=0
+        self.cover_counter=0
+        self.attention_counter=0
+        self.smoke_counter=0
+        self.phone_counter=0
 
         #camera and text font
         self.camera=cv2.VideoCapture(camera)
@@ -65,9 +62,7 @@ class DriverSafety():
 
     #create directory if is not exist.
     def createPath(self,path):
-        """ 
-        Document will be added.
-        """
+
         try:
             os.mkdir(path)
             return path
@@ -77,34 +72,26 @@ class DriverSafety():
 
     #Yolo Models/Facial Landmarks
     def models(self):
-        """ 
-        Document will be added.
-        """
+
         #dlib model
-        self.face_landmarks=self.models_path+"shape_predictor_68_face_landmarks.dat"
+        face_landmarks=self.models_path+"shape_predictor_68_face_landmarks.dat"
         self.detector=dlib.get_frontal_face_detector()
-        self.predictor=dlib.shape_predictor(self.face_landmarks)
+        self.predictor=dlib.shape_predictor(face_landmarks)
         
         #eyes location index
-        (self.lStart, self.lEnd) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
-        (self.rStart, self.rEnd) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
+        (self.l_start, self.l_end) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
+        (self.r_start, self.r_end) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
         
         #yolo model
         #yolov4_tiny->low accuracy, high fps
         #yolov4->high accuracy, low fps
-        self.net=cv2.dnn.readNet(self.models_path+"yolov4-tiny_training_last.weights",self.models_path+"yolov4-tiny_testing.cfg")
-        #self.net=cv2.dnn.readNet(self.models_path+"yolov4_training_last.weights",self.models_path+"yolov4_testing.cfg")
-
-        #classes
-        with open(self.models_path+"classes.names","r") as f:
-            self.classes=f.read().splitlines()
+        #self.net=cv2.dnn.readNet(self.models_path+"yolov4-tiny_training_last.weights",self.models_path+"yolov4-tiny_testing.cfg")
+        self.net=cv2.dnn.readNet(self.models_path+"yolov4_training_last.weights",self.models_path+"yolov4_testing.cfg")
 
 
     #threads start function
     def startThreads(self,_target,_args=()):
-        """ 
-        Document will be added.
-        """
+
         t=Thread(target=_target,args=_args)
         t.daemon=True
         t.start()
@@ -113,9 +100,7 @@ class DriverSafety():
 
     #Camera Run
     def startVideoStream(self,camera):
-        """ 
-        Document will be added.
-        """
+
         time.sleep(2.0)#waiting for camera build up
         
         while True:
@@ -126,20 +111,19 @@ class DriverSafety():
             if not ret:
                 break
 
-            self._time=time.time()#read time every frame
-
             #resize frame
             self.frame = imutils.resize(self.frame, width=480,height=480)
+
             #grayscale frame
             self.gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
             
-            #if camera is blocked ->changeable
+            #if camera is blocked
             if not self.gray.any():
                 self.startThreads(self.controlCameraBlocked)
 
+            #if grayscale image is dark, it is made brighter using Histogram Equalizer. 
             if np.mean(self.gray)/255 < 0.5:
-                self.gray=cv2.equalizeHist(self.gray)
-
+                self.histogramEqualization()
             
             #start object detection control, facial landmarks control and driver attention detection
             self.startThreads(self.objectDetection)
@@ -150,47 +134,54 @@ class DriverSafety():
             self.startThreads(self.smokeDetection)
 
             #show camera
-            cv2.imshow("Camera",self.gray)
+            cv2.imshow("Camera",self.frame)
             
             #press ESC or Q close camera
-            self.key=cv2.waitKey(1) & 0xff
-            if self.key==27 or self.key==ord("q"):
+            key=cv2.waitKey(1) & 0xff
+            if key==27 or key==ord("q"):
                 break
 
         #stop processing
         self.stopVideoStream()
 
 
+    def histogramEqualization(self):
+
+        b_channel,g_channel,r_channel=np.dsplit(self.frame,3)
+        b_channel=cv2.equalizeHist(b_channel)
+        r_channel=cv2.equalizeHist(r_channel)
+        g_channel=cv2.equalizeHist(g_channel)
+
+        self.frame=np.dstack((b_channel,g_channel,r_channel))
+        self.gray=cv2.equalizeHist(self.gray)        
+
+
     def controlCameraBlocked(self):
-        """ 
-        Document will be added.
-        """
+
         #if camera blocked, when reach specified time, run warning and save image. 
-        self.COVER_COUNTER+=1
-        if self.COVER_COUNTER>10:
-            time.sleep(1.0)
+        self.cover_counter+=1
+
+        if self.cover_counter>10:
             self.errorTimeControl("Camera Blocked",5)
             self.warning("BlockedCameraWarning.mp3")
-            #time.sleep(5.0)
+            
         if self.gray.any():
-            self.COVER_COUNTER=0
+            self.cover_counter=0
 
 
     #Yolo Object Detection
     def objectDetection(self):
-        """ 
-        Document will be added.
-        """        
-        height,width=self.frame.shape[0],self.frame.shape[1]
+       
+        height,width,_ = self.frame.shape
         
-        #will be drawn box list, scores list and object id list
-        boxes=[]
+        #scores list and object id list
         confidences=[]
-        class_ids=[]
+        class_ids=[]#classes id->0-person, 1-phone, 2-smoke
 
         #image to blob and detect object
-        blob=cv2.dnn.blobFromImage(self.frame,1/255,(416,416),(0,0,0),swapRB=True,crop=False)
+        blob=cv2.dnn.blobFromImage(self.frame,1/255,(512,512),(0,0,0),swapRB=True,crop=False)
         self.net.setInput(blob)
+
         out_layers_name=self.net.getUnconnectedOutLayersNames()
         layer_outs=self.net.forward(out_layers_name)
 
@@ -213,29 +204,27 @@ class DriverSafety():
                     x=int(center_x-w/2)
                     y=int(center_y-h/2)
 
-                    boxes.append([x,y,w,h])
                     confidences.append(float(confidence))
                     class_ids.append(class_id)
-        self.control_class_id=class_ids.copy()
+
+        self.control_class_id=class_ids.copy()#use control object detection
+
 
     #Calculate eye aspect ratio
     def findEyeAspectRatio(self,eye):
-        """ 
-        Document will be added.
-        """
+
         first_height = dist.euclidean(eye[1], eye[5])
         second_height = dist.euclidean(eye[2], eye[4])
         eye_width = dist.euclidean(eye[0], eye[3])
 
-        self.eye_aspect_ratio = (first_height + second_height) / (2.0 * eye_width)
+        eye_aspect_ratio = (first_height + second_height) / (2.0 * eye_width)
 
-        return self.eye_aspect_ratio
+        return eye_aspect_ratio
+
 
     #Face and Eye detection with dlib
     def faceAndEyesDetection(self):
-        """ 
-        Document will be added.
-        """
+
         self.rects=self.detector(self.gray,0)
 
         for rect in self.rects:
@@ -244,97 +233,94 @@ class DriverSafety():
             shape = face_utils.shape_to_np(shape)
 
 
-            leftEye = shape[self.lStart:self.lEnd]
-            rightEye = shape[self.rStart:self.rEnd]
+            left_eye = shape[self.l_start:self.l_end]
+            right_eye = shape[self.r_start:self.r_end]
 
-            leftEAR = self.findEyeAspectRatio(leftEye)
-            rightEAR = self.findEyeAspectRatio(rightEye)
-            ear = (leftEAR + rightEAR) / 2.0
+            left_ear = self.findEyeAspectRatio(left_eye)
+            right_ear = self.findEyeAspectRatio(right_eye)
+            ear = (left_ear + right_ear) / 2.0
 
             self.drowsinessDetection(ear)
 
 
     #if driver look another direction long time, run warning and save image
     def attentionDetection(self):
-        """ 
-        Document will be added.
-        """
 
         try:
+            #if yolo model detect person->True, else False
             control=True if 0 in self.control_class_id else False
-            print("control:",control)
+
+            #if yolo model detect person but dlib model doesn't detect face.
             if not (not control or self.rects):
-                self.ATTENTION_COUNTER+=1
-                print("Attention:",self.ATTENTION_COUNTER)
-                if self.ATTENTION_COUNTER>5:
-                    self.errorTimeControl("Attention",2)
-                    self.warning("AttentionWarning.mp3")
-                    #time.sleep(5.0)
+                self.attention_counter+=1
+                if self.attention_counter>5:
+                    self.errorTimeControl("attention",2)
+                    self.warning("attentionWarning.mp3")
+            
             else:
-                self.ATTENTION_COUNTER=0
+                self.attention_counter=0
+       
         except:
             pass
 
 
     #if detect cigarette, run warning and save image
     def smokeDetection(self):
-        """ 
-        Document will be added.
-        """
+
         try:
+            #if yolo model detect smoke->True, else False
             control=True if 2 in self.control_class_id else False
+
             if control:
-                self.SMOKE_COUNTER+=1
-                if self.SMOKE_COUNTER>5:
+                self.smoke_counter+=1
+                if self.smoke_counter>5:
                     self.errorTimeControl("Smoking",3)
-                    self.warning("SmokeWarning.mp3")
-                    #time.sleep(5.0)
+                    self.warning("smokeWarning.mp3")
+
             else:
-                self.SMOKE_COUNTER=0
+                self.smoke_counter=0
+                
         except:
             pass
 
 
     #if detect phone, run warning and save image    
     def phoneDetection(self):
-        """ 
-        Document will be added.
-        """
+
         try:
+            #if yolo model detect phone->True, else False
             control=True if 1 in self.control_class_id else False
+
             if control:
-                self.PHONE_COUNTER+=1
-                print("Phone:",self.PHONE_COUNTER)
-                if self.PHONE_COUNTER>=3:
-                    self.errorTimeControl("Phone",4)
-                    self.warning("PhoneWarning.mp3")
-                    #time.sleep(5.0)
+                self.phone_counter+=1
+                if self.phone_counter>=3:
+                    self.errorTimeControl("phone",4)
+                    self.warning("phoneWarning.mp3")
+
             else:
-                self.PHONE_COUNTER=0
+                self.phone_counter=0
+
         except:
             pass
 
 
     #if eyes aspect ratio < identified threshold. run warning and save image.
     def drowsinessDetection(self,ear):
-        """ 
-        Document will be added.
-        """
-        if ear < self.EYE_AR_THRESH:
-            self.COUNTER += 1
 
-            if self.COUNTER >= self.EYE_AR_CONSEC_FRAMES:
+        #if eyes aspect ratio is smaller than threshold.
+        if ear < self.eye_ar_threshold:
+            self.drowsiness_counter += 1
+
+            if self.drowsiness_counter >= self.eye_ar_consec_frame:
                 self.errorTimeControl("Drowsiness",1)
                 self.warning("Drowsiness.mp3")
-                #time.sleep(3.0)
+
         else:
-            self.COUNTER = 0
+            self.drowsiness_counter = 0
+
 
     #play warning sounds
     def warning(self,file):
-        """ 
-        Document will be added.
-        """        
         
         path=self.alert_path+file
         playsound.playsound(path)
@@ -343,26 +329,24 @@ class DriverSafety():
 
     #error time control, if error is same, must be wait 5(changeable) second save it.
     def errorTimeControl(self,error,error_code):
-        """ 
-        Document will be added.
-        """        
+        
         if error==self.last_err:
             if time.time()-self.last_err_time>5:
                 self.saveImage(error,error_code)
+
         else:
             self.saveImage(error,error_code)
 
 
     #if detected any anomaly, save it.
     def saveImage(self,error,error_code):
-        """ 
-        Document will be added.
-        """        
+       
         self.last_err_time=time.time()
 
         img="{}_{}_{}.jpg".format(error_code,error,self.last_err_time)
         
-        saved_img="{}/{}".format(self.save_image_path,img)
+        saved_img=self.save_image_path+img
+        
         cv2.imwrite(saved_img,self.frame)
         
         self.err=error
@@ -371,29 +355,38 @@ class DriverSafety():
         
         self.jsonData(img,base64_image)
 
+
     #image to base64 format    
     def imagetoBase64(self):
-        """
-        Document will be added
-        """
 
         flag,encoded_image=cv2.imencode(".jpg",self.frame)
+
         base64_image=base64.b64encode(encoded_image)
         base64_image=base64_image.decode("utf-8")
+        
         return base64_image
 
+
+    #base64 format save in json format
     def jsonData(self,img,base64_image):
+        
+        img=img[:-4]#drop jpg extension
+        
         data={img:base64_image}
-        with open('jsonData.txt', 'a') as outfile:
+
+        saved_path=self.save_image_path+img+".json"
+
+
+        with open(saved_path, 'a') as outfile:
             json.dump(data, outfile)
 
-    #release camera, close camera window and log it.
+
+    #release camera, close camera window.
     def stopVideoStream(self):
-        """ 
-        Document will be added.
-        """
+ 
         self.camera.release()
         cv2.destroyAllWindows()
+
 
 
 if __name__=="__main__":
