@@ -23,11 +23,12 @@ class DriverSafety():
     def __init__(self,camera=0):
 
         #Thresholds
-        self.eyes_ar_threshold = 0.25#Eyes aspect ratio thresholds
+        self.eyes_ar_threshold = 0.25#Eyes aspect ratio threshold
         self.eye_ar_consec_frames = 5#drowsiness frames count
         self.object_consec_frames=5#detect object frames count
         self.cover_consec_frames=5#cover camera frames count
         self.attention_consec_frames=5#attenion detect frames count
+        self.hist_equ_threshold=0.5#histogram equalization threshold
 
         #counters
         self.drowsiness_counter=0
@@ -129,8 +130,7 @@ class DriverSafety():
                 self.startThreads(self.controlCameraBlocked)
 
             #if grayscale image is dark, it is made brighter using Histogram Equalizer.
-            #threshold changeable.
-            if np.mean(self.gray)/255 < 0.5:
+            if np.mean(self.gray)/255 < self.hist_equ_threshold:
                 self.histogramEqualization()
             
             #start object detection control, facial landmarks control and driver attention detection

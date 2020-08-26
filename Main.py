@@ -25,11 +25,12 @@ class DriverSafety():
         Document will be added.
         """
         #Thresholds
-        self.eyes_ar_threshold = 0.25#Eyes aspect ratio thresholds
+        self.eyes_ar_threshold = 0.25#Eyes aspect ratio threshold
         self.eye_ar_consec_frames = 5#drowsiness frames count
         self.object_consec_frames=5#detect object frames count
         self.cover_consec_frames=5#cover camera frames count
         self.attention_consec_frames=5#attenion detect frames count
+        self.hist_equ_threshold#histogram equalization threshold
 
         #Counters
         self.drowsiness_counter=0
@@ -141,8 +142,7 @@ class DriverSafety():
                 self.startThreads(self.controlCameraBlocked)
 
             #if grayscale image is dark, it is made brighter using Histogram Equalizer.
-            #threshold changeable.
-            if np.mean(self.gray)/255 < 0.5:
+            if np.mean(self.gray)/255 < self.histogramEqualization:
                 self.histogramEqualization()
 
             
