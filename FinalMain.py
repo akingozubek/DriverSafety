@@ -11,7 +11,6 @@ import imutils
 import numpy as np
 import playsound
 from imutils import face_utils
-from imutils.video import VideoStream
 from scipy.spatial import distance as dist
 
 #Sesler->Sounds Klasöründe
@@ -23,12 +22,12 @@ class DriverSafety():
     def __init__(self,camera=0):
 
         #Thresholds
-        self.eyes_ar_threshold = 0.25#Eyes aspect ratio threshold
+        self.eyes_ar_threshold = 0.24#Eyes aspect ratio threshold
         self.eye_ar_consec_frames = 5#drowsiness frames count
         self.object_consec_frames=5#detect object frames count
         self.cover_consec_frames=5#cover camera frames count
         self.attention_consec_frames=5#attenion detect frames count
-        self.hist_equ_threshold=0.5#histogram equalization threshold
+        self.hist_equ_threshold=0.3#histogram equalization threshold
 
         #counters
         self.drowsiness_counter=0
@@ -91,7 +90,7 @@ class DriverSafety():
         #yolov4->high accuracy, low fps
 
         #self.net=cv2.dnn.readNet(self.models_path+"yolov4-tiny_training_last.weights",self.models_path+"yolov4-tiny_testing.cfg")
-        self.net=cv2.dnn.readNet(self.models_path+"yolov4_training_last.weights",self.models_path+"yolov4_testing.cfg")
+        self.net=cv2.dnn.readNet(self.models_path+"yolov4_training_last.weights",self.models_path+"yolov4_testing.cfg")#2.64
 
 
     #threads start function
@@ -328,7 +327,7 @@ class DriverSafety():
         
         path=self.alert_path+file
         playsound.playsound(path)
-        time.sleep(2.0)
+        time.sleep(1.0)
 
 
     #error time control, if error is same, must be wait 5(changeable) second save it.

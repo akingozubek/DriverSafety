@@ -11,7 +11,6 @@ import imutils
 import numpy as np
 import playsound
 from imutils import face_utils
-from imutils.video import VideoStream
 from scipy.spatial import distance as dist
 
 #Sesler->Sounds Klasöründe
@@ -25,12 +24,12 @@ class DriverSafety():
         Document will be added.
         """
         #Thresholds
-        self.eyes_ar_threshold = 0.25#Eyes aspect ratio threshold
+        self.eyes_ar_threshold = 0.24#Eyes aspect ratio threshold
         self.eye_ar_consec_frames = 5#drowsiness frames count
         self.object_consec_frames=5#detect object frames count
         self.cover_consec_frames=5#cover camera frames count
         self.attention_consec_frames=5#attenion detect frames count
-        self.hist_equ_threshold#histogram equalization threshold
+        self.hist_equ_threshold=0.3#histogram equalization threshold
 
         #Counters
         self.drowsiness_counter=0
@@ -142,7 +141,7 @@ class DriverSafety():
                 self.startThreads(self.controlCameraBlocked)
 
             #if grayscale image is dark, it is made brighter using Histogram Equalizer.
-            if np.mean(self.gray)/255 < self.histogramEqualization:
+            if np.mean(self.gray)/255 < self.hist_equ_threshold:
                 self.histogramEqualization()
 
             
@@ -184,6 +183,7 @@ class DriverSafety():
         """
         #if camera blocked, when reach specified time, run warning and save image. 
         self.cover_counter+=1
+        print("Cover:",self.cover_counter)
 
         #self.attention_counter=0->if using tiny. bug.
         if self.cover_counter>self.cover_consec_frames:
@@ -224,7 +224,7 @@ class DriverSafety():
                 confidence=score[class_id]#score is detected object
                 
                 #if score %50 coordination and boxes process
-                if confidence>0.19:
+                if confidence>0.24:
                     center_x=int(detection[0]*width)
                     center_y=int(detection[0]*height)
                     
@@ -240,7 +240,7 @@ class DriverSafety():
         #use control object detection          
         self.control_class_id=class_ids.copy()
 
-        idx=cv2.dnn.NMSBoxes(boxes,confidences,0.19,0.4)
+        idx=cv2.dnn.NMSBoxes(boxes,confidences,0.24,0.4)
         color=[0,0,255]
     
         #show boxes and text
@@ -325,7 +325,7 @@ class DriverSafety():
         """
 
         self.smoke_counter=self.objectControl(2,self.smoke_counter,"Smoke",3,"smokeWarning.mp3")
-
+        print("Smoke:",self.smoke_counter)
 
     #if detect phone, run warning and save image    
     def phoneDetection(self):
@@ -334,7 +334,7 @@ class DriverSafety():
         """
 
         self.phone_counter=self.objectControl(1,self.phone_counter,"Phone",4,"phoneWarning.mp3")
-    
+        print("Phone:",self.phone_counter)
 
     def objectControl(self,class_id,counter,error,error_code,warning_name):
         try:
