@@ -1,4 +1,6 @@
 # import the necessary packages
+import base64
+import json
 import os
 import time
 from threading import Thread
@@ -10,8 +12,6 @@ import numpy as np
 import playsound
 from imutils import face_utils
 from imutils.video import VideoStream
-import base64
-import json
 from scipy.spatial import distance as dist
 
 #Sesler->Sounds Klasöründe
@@ -24,11 +24,14 @@ class DriverSafety():
         """ 
         Document will be added.
         """
-        #Eyes aspect ratio thresholds and frame count
-        self.eyes_ar_threshold = 0.25#+- changeable
-        self.eye_ar_consec_frames = 5#+- changeable
+        #Thresholds
+        self.eyes_ar_threshold = 0.25#Eyes aspect ratio thresholds
+        self.eye_ar_consec_frames = 5#drowsiness frames count
+        self.object_consec_frames=5#detect object frames count
+        self.cover_consec_frames=5#cover camera frames count
+        self.attention_consec_frames=5#attenion detect frames count
 
-        #counters
+        #Counters
         self.drowsiness_counter=0
         self.cover_counter=0
         self.attention_counter=0
@@ -88,6 +91,7 @@ class DriverSafety():
         #yolo model
         #yolov4_tiny->low accuracy, high fps
         #yolov4->high accuracy, low fps
+
         #self.net=cv2.dnn.readNet(self.models_path+"yolov4-tiny_training_last.weights",self.models_path+"yolov4-tiny_testing.cfg")
         self.net=cv2.dnn.readNet(self.models_path+"yolov4_training_last.weights",self.models_path+"yolov4_testing.cfg")
 
@@ -122,16 +126,22 @@ class DriverSafety():
             #if camera does not respond, shuts down system
             if not ret:
                 break
-
+            
+            # if not using camera can be activated.
+            # self.frame=cv2.rotate(self.frame, cv2.ROTATE_90_CLOCKWISE)
+            
             #resize frame
             self.frame = imutils.resize(self.frame, width=480,height=480)
+
             #grayscale frame
             self.gray = cv2.cvtColor(self.frame, cv2.COLOR_BGR2GRAY)
             
-            #if camera is blocked ->changeable
+            #if camera is blocked
             if not self.gray.any():
                 self.startThreads(self.controlCameraBlocked)
 
+            #if grayscale image is dark, it is made brighter using Histogram Equalizer.
+            #threshold changeable.
             if np.mean(self.gray)/255 < 0.5:
                 self.histogramEqualization()
 
@@ -157,14 +167,16 @@ class DriverSafety():
 
 
     def histogramEqualization(self):
+        
+        #divide blue,green,red channels
+        b_ch,g_ch,r_ch=np.dsplit(self.frame,3)
+        
+        #Histogram Equalization, blue,green,red channels and grayscale frame.
+        b_ch,g_ch,r_ch,self.gray=map(cv2.equalizeHist,[b_ch,g_ch,r_ch,self.gray])
+        
+        #combine channels->frame.
+        self.frame=np.dstack((b_ch,g_ch,r_ch))
 
-        b_channel,g_channel,r_channel=np.dsplit(self.frame,3)
-        b_channel=cv2.equalizeHist(b_channel)
-        r_channel=cv2.equalizeHist(r_channel)
-        g_channel=cv2.equalizeHist(g_channel)
-
-        self.frame=np.dstack((b_channel,g_channel,r_channel))
-        self.gray=cv2.equalizeHist(self.gray)        
 
     def controlCameraBlocked(self):
         """ 
@@ -172,10 +184,12 @@ class DriverSafety():
         """
         #if camera blocked, when reach specified time, run warning and save image. 
         self.cover_counter+=1
-        if self.cover_counter>10:
-            time.sleep(1.0)
+
+        #self.attention_counter=0->if using tiny. bug.
+        if self.cover_counter>self.cover_consec_frames:
             self.errorTimeControl("Camera Blocked",5)
             self.warning("BlockedCameraWarning.mp3")
+            self.cover_counter=0
             #time.sleep(5.0)
         if self.gray.any():
             self.cover_counter=0
@@ -186,7 +200,7 @@ class DriverSafety():
         """ 
         Document will be added.
         """        
-        height,width=self.frame.shape[0],self.frame.shape[1]
+        height,width,_=self.frame.shape
         
         #will be drawn box list, scores list and object id list
         boxes=[]
@@ -197,6 +211,7 @@ class DriverSafety():
         #image to blob and detect object
         blob=cv2.dnn.blobFromImage(self.frame,1/255,(416,416),(0,0,0),swapRB=True,crop=False)
         self.net.setInput(blob)
+
         out_layers_name=self.net.getUnconnectedOutLayersNames()
         layer_outs=self.net.forward(out_layers_name)
 
@@ -209,7 +224,7 @@ class DriverSafety():
                 confidence=score[class_id]#score is detected object
                 
                 #if score %50 coordination and boxes process
-                if confidence>0.24:
+                if confidence>0.19:
                     center_x=int(detection[0]*width)
                     center_y=int(detection[0]*height)
                     
@@ -222,10 +237,11 @@ class DriverSafety():
                     boxes.append([x,y,w,h])
                     confidences.append(float(confidence))
                     class_ids.append(class_id)
+        #use control object detection          
         self.control_class_id=class_ids.copy()
 
-        idx=cv2.dnn.NMSBoxes(boxes,confidences,0.24,0.4)
-        colors=np.random.uniform(0,255,size=(len(boxes),3))
+        idx=cv2.dnn.NMSBoxes(boxes,confidences,0.19,0.4)
+        color=[0,0,255]
     
         #show boxes and text
         #try:
@@ -235,7 +251,6 @@ class DriverSafety():
                 label=str(self.classes[class_ids[i]])
                 print(label)
                 confidence=str(round(confidences[i],2))
-                color=colors[i]
                 cv2.rectangle(self.frame,(x,y),(x+w,y+h),color,1)
                 cv2.putText(self.frame,label+confidence,(x,y+20),self.font,2,(255,255,255),2)
             #self.putTextVideoStream(label,confidence,x,y+10)
@@ -292,9 +307,10 @@ class DriverSafety():
             if not (not control or self.rects):
                 self.attention_counter+=1
                 print("attention:",self.attention_counter)
-                if self.attention_counter>10:
+                if self.attention_counter>self.attention_consec_frames:
                     self.errorTimeControl("attention",2)
                     self.warning("attentionWarning.mp3")
+                    self.attention_counter=0
                     #time.sleep(5.0)
             else:
                 self.attention_counter=0
@@ -307,19 +323,8 @@ class DriverSafety():
         """ 
         Document will be added.
         """
-        try:
-            control=True if 2 in self.control_class_id else False
-            if control:
-                self.smoke_counter+=1
-                print("smoke:",self.smoke_counter)
-                if self.smoke_counter>10:
-                    self.errorTimeControl("Smoking",3)
-                    self.warning("smokeWarning.mp3")
-                    #time.sleep(5.0)
-            else:
-                self.smoke_counter=0
-        except:
-            pass
+
+        self.smoke_counter=self.objectControl(2,self.smoke_counter,"Smoke",3,"smokeWarning.mp3")
 
 
     #if detect phone, run warning and save image    
@@ -327,19 +332,30 @@ class DriverSafety():
         """ 
         Document will be added.
         """
+
+        self.phone_counter=self.objectControl(1,self.phone_counter,"Phone",4,"phoneWarning.mp3")
+    
+
+    def objectControl(self,class_id,counter,error,error_code,warning_name):
         try:
-            control=True if 1 in self.control_class_id else False
+            control=True if class_id in self.control_class_id else False
+            
             if control:
-                self.phone_counter+=1
-                print("Phone:",self.phone_counter)
-                if self.phone_counter>=3:
-                    self.errorTimeControl("Phone",4)
-                    self.warning("PhoneWarning.mp3")
-                    #time.sleep(5.0)
+                counter+=1
+
+                if counter>=self.object_consec_frames:
+                    self.errorTimeControl(error,error_code)
+                    self.warning(warning_name)
+                    counter=0
+            
             else:
-                self.phone_counter=0
+                counter=0
+            return counter
+
         except:
-            pass
+            return counter
+
+
 
 
     #if eyes aspect ratio < identified threshold. run warning and save image.
@@ -349,10 +365,12 @@ class DriverSafety():
         """
         if ear < self.eyes_ar_threshold:
             self.drowsiness_counter += 1
+            print(time.strftime("%X"))
             print("Drowsiness:",self.drowsiness_counter)
             if self.drowsiness_counter >= self.eye_ar_consec_frames:
                 self.errorTimeControl("Drowsiness",1)
                 self.warning("Drowsiness.mp3")
+                self.drowsiness_counter=0
                 #time.sleep(3.0)
         else:
             self.drowsiness_counter = 0

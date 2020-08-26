@@ -22,9 +22,12 @@ class DriverSafety():
 
     def __init__(self,camera=0):
 
-        #Eyes aspect ratio thresholds and frame count
-        self.eye_ar_threshold = 0.25#+- changeable
-        self.eye_ar_consec_frame = 5#+- changeable
+        #Thresholds
+        self.eyes_ar_threshold = 0.25#Eyes aspect ratio thresholds
+        self.eye_ar_consec_frames = 5#drowsiness frames count
+        self.object_consec_frames=5#detect object frames count
+        self.cover_consec_frames=5#cover camera frames count
+        self.attention_consec_frames=5#attenion detect frames count
 
         #counters
         self.drowsiness_counter=0
@@ -85,6 +88,7 @@ class DriverSafety():
         #yolo model
         #yolov4_tiny->low accuracy, high fps
         #yolov4->high accuracy, low fps
+
         #self.net=cv2.dnn.readNet(self.models_path+"yolov4-tiny_training_last.weights",self.models_path+"yolov4-tiny_testing.cfg")
         self.net=cv2.dnn.readNet(self.models_path+"yolov4_training_last.weights",self.models_path+"yolov4_testing.cfg")
 
@@ -111,6 +115,9 @@ class DriverSafety():
             if not ret:
                 break
 
+            # if not using camera can be activated.
+            # self.frame=cv2.rotate(self.frame, cv2.ROTATE_90_CLOCKWISE)
+            
             #resize frame
             self.frame = imutils.resize(self.frame, width=480,height=480)
 
@@ -121,7 +128,8 @@ class DriverSafety():
             if not self.gray.any():
                 self.startThreads(self.controlCameraBlocked)
 
-            #if grayscale image is dark, it is made brighter using Histogram Equalizer. 
+            #if grayscale image is dark, it is made brighter using Histogram Equalizer.
+            #threshold changeable.
             if np.mean(self.gray)/255 < 0.5:
                 self.histogramEqualization()
             
@@ -146,14 +154,15 @@ class DriverSafety():
 
 
     def histogramEqualization(self):
-
-        b_channel,g_channel,r_channel=np.dsplit(self.frame,3)
-        b_channel=cv2.equalizeHist(b_channel)
-        r_channel=cv2.equalizeHist(r_channel)
-        g_channel=cv2.equalizeHist(g_channel)
-
-        self.frame=np.dstack((b_channel,g_channel,r_channel))
-        self.gray=cv2.equalizeHist(self.gray)        
+        
+        #divide blue,green,red channels
+        b_ch,g_ch,r_ch=np.dsplit(self.frame,3)
+        
+        #Histogram Equalization, blue,green,red channels and grayscale frame.
+        b_ch,g_ch,r_ch,self.gray=map(cv2.equalizeHist,[b_ch,g_ch,r_ch,self.gray])
+        
+        #combine channels->frame.
+        self.frame=np.dstack((b_ch,g_ch,r_ch))
 
 
     def controlCameraBlocked(self):
@@ -161,9 +170,10 @@ class DriverSafety():
         #if camera blocked, when reach specified time, run warning and save image. 
         self.cover_counter+=1
 
-        if self.cover_counter>10:
+        if self.cover_counter>self.cover_consec_frames:
             self.errorTimeControl("Camera Blocked",5)
             self.warning("BlockedCameraWarning.mp3")
+            self.cover_counter=0
             
         if self.gray.any():
             self.cover_counter=0
@@ -206,8 +216,8 @@ class DriverSafety():
 
                     confidences.append(float(confidence))
                     class_ids.append(class_id)
-
-        self.control_class_id=class_ids.copy()#use control object detection
+        #use control object detection
+        self.control_class_id=class_ids.copy()
 
 
     #Calculate eye aspect ratio
@@ -253,9 +263,10 @@ class DriverSafety():
             #if yolo model detect person but dlib model doesn't detect face.
             if not (not control or self.rects):
                 self.attention_counter+=1
-                if self.attention_counter>5:
+                if self.attention_counter>self.attention_consec_frames:
                     self.errorTimeControl("attention",2)
                     self.warning("attentionWarning.mp3")
+                    self.attention_counter=0
             
             else:
                 self.attention_counter=0
@@ -267,53 +278,46 @@ class DriverSafety():
     #if detect cigarette, run warning and save image
     def smokeDetection(self):
 
-        try:
-            #if yolo model detect smoke->True, else False
-            control=True if 2 in self.control_class_id else False
-
-            if control:
-                self.smoke_counter+=1
-                if self.smoke_counter>5:
-                    self.errorTimeControl("Smoking",3)
-                    self.warning("smokeWarning.mp3")
-
-            else:
-                self.smoke_counter=0
-                
-        except:
-            pass
+        self.smoke_counter=self.objectControl(2,self.smoke_counter,"Smoke",3,"smokeWarning.mp3")
 
 
     #if detect phone, run warning and save image    
     def phoneDetection(self):
 
+        self.phone_counter=self.objectControl(1,self.phone_counter,"Phone",4,"phoneWarning.mp3")
+    
+
+    def objectControl(self,class_id,counter,error,error_code,warning_name):
         try:
-            #if yolo model detect phone->True, else False
-            control=True if 1 in self.control_class_id else False
-
+            control=True if class_id in self.control_class_id else False
+            
             if control:
-                self.phone_counter+=1
-                if self.phone_counter>=3:
-                    self.errorTimeControl("phone",4)
-                    self.warning("phoneWarning.mp3")
+                counter+=1
 
+                if counter>=self.object_consec_frames:
+                    self.errorTimeControl(error,error_code)
+                    self.warning(warning_name)
+                    counter=0
+            
             else:
-                self.phone_counter=0
+                counter=0
+            return counter
 
         except:
-            pass
+            return counter
 
 
     #if eyes aspect ratio < identified threshold. run warning and save image.
     def drowsinessDetection(self,ear):
 
         #if eyes aspect ratio is smaller than threshold.
-        if ear < self.eye_ar_threshold:
+        if ear < self.eyes_ar_threshold:
             self.drowsiness_counter += 1
 
-            if self.drowsiness_counter >= self.eye_ar_consec_frame:
+            if self.drowsiness_counter >= self.eye_ar_consec_frames:
                 self.errorTimeControl("Drowsiness",1)
                 self.warning("Drowsiness.mp3")
+                self.drowsiness_counter=0
 
         else:
             self.drowsiness_counter = 0
