@@ -85,7 +85,7 @@ class DriverSafety():
         # eyes location index
         (self.l_start,
          self.l_end) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
-         
+
         (self.r_start,
          self.r_end) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
 
@@ -93,11 +93,15 @@ class DriverSafety():
         # yolov4_tiny->low accuracy, high fps
         # yolov4->high accuracy, low fps
 
-        # self.net = cv2.dnn.readNet(self.models_path + "yolov4-tiny_training_last.weights",
-        #                           self.models_path + "yolov4-tiny_testing.cfg")
+        # self.net = cv2.dnn.readNet(
+        #     self.models_path + "yolov4-tiny_training_last.weights",
+        #     self.models_path + "yolov4-tiny_testing.cfg"
+        # )
 
-        self.net = cv2.dnn.readNet(self.models_path + "yolov4_training_last.weights",
-                                   self.models_path + "yolov4_testing.cfg")  # 2.64
+        self.net = cv2.dnn.readNet(
+            self.models_path + "yolov4_training_last.weights",
+            self.models_path + "yolov4_testing.cfg"
+        )  # 2.64
 
     # threads start function
 
@@ -223,6 +227,7 @@ class DriverSafety():
 
                     confidences.append(float(confidence))
                     class_ids.append(class_id)
+
         # use control object detection
         self.control_class_id = class_ids.copy()
 

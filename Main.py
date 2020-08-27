@@ -79,13 +79,14 @@ class DriverSafety():
         Document will be added.
         """
         # dlib model
-        face_landmarks = self.models_path+"shape_predictor_68_face_landmarks.dat"
+        FACE_LANDMARKS = self.models_path+"shape_predictor_68_face_landmarks.dat"
         self.detector = dlib.get_frontal_face_detector()
-        self.predictor = dlib.shape_predictor(face_landmarks)
+        self.predictor = dlib.shape_predictor(FACE_LANDMARKS)
 
         # eyes location index
         (self.l_start,
          self.l_end) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
+
         (self.r_start,
          self.r_end) = face_utils.FACIAL_LANDMARKS_IDXS["right_eye"]
 
@@ -93,9 +94,15 @@ class DriverSafety():
         # yolov4_tiny->low accuracy, high fps
         # yolov4->high accuracy, low fps
 
-        # self.net=cv2.dnn.readNet(self.models_path+"yolov4-tiny_training_last.weights",self.models_path+"yolov4-tiny_testing.cfg")
+        # self.net = cv2.dnn.readNet(
+        #    self.models_path+"yolov4-tiny_training_last.weights",
+        #    self.models_path+"yolov4-tiny_testing.cfg"
+        # )
+
         self.net = cv2.dnn.readNet(
-            self.models_path+"yolov4_training_last.weights", self.models_path+"yolov4_testing.cfg")
+            self.models_path+"yolov4_training_last.weights",
+            self.models_path+"yolov4_testing.cfg"
+        )
 
         # classes
         self.classes = ["person", "phone", "smoke"]
@@ -208,6 +215,7 @@ class DriverSafety():
         # image to blob and detect object
         blob = cv2.dnn.blobFromImage(
             self.frame, 1/255, (416, 416), (0, 0, 0), swapRB=True, crop=False)
+
         self.net.setInput(blob)
 
         out_layers_name = self.net.getUnconnectedOutLayersNames()
@@ -234,6 +242,7 @@ class DriverSafety():
                     boxes.append([x, y, w, h])
                     confidences.append(float(confidence))
                     class_ids.append(class_id)
+
         # use control object detection
         self.control_class_id = class_ids.copy()
 
@@ -322,6 +331,7 @@ class DriverSafety():
 
         self.smoke_counter = self.object_control(
             2, self.smoke_counter, "Smoke", 3, "smokeWarning.mp3")
+
         print("Smoke:", self.smoke_counter)
 
     # if detect phone, run warning and save image
@@ -332,6 +342,7 @@ class DriverSafety():
 
         self.phone_counter = self.object_control(
             1, self.phone_counter, "Phone", 4, "phoneWarning.mp3")
+
         print("Phone:", self.phone_counter)
 
     def object_control(self, class_id, counter, error, error_code, warning_name):
