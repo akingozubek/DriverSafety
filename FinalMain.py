@@ -19,32 +19,32 @@ from scipy.spatial import distance as dist
 
 class DriverSafety():
 
-    def __init__(self,camera=0):
+    def __init__(self, camera=0):
 
         #Thresholds
-        self.eyes_ar_threshold = 0.24#Eyes aspect ratio threshold
-        self.eye_ar_consec_frames = 5#drowsiness frames count
-        self.object_consec_frames=5#detect object frames count
-        self.cover_consec_frames=5#cover camera frames count
-        self.attention_consec_frames=5#attenion detect frames count
-        self.hist_equ_threshold=0.3#histogram equalization threshold
+        self.EYES_AR_THRESHOLD = 0.24 #Eyes aspect ratio threshold
+        self.EYE_AR_CONSEC_FRAMES = 5 #drowsiness frames count
+        self.OBJECT_CONSEC_FRAMES = 5 #detect object frames count
+        self.COVER_CONSEC_FRAMES = 5 #cover camera frames count
+        self.ATTENTION_CONSEC_FRAMES = 5 #attenion detect frames count
+        self.HIST_EQU_THRESHOLD = 0.3 #histogram equalization threshold
 
         #counters
-        self.drowsiness_counter=0
-        self.cover_counter=0
-        self.attention_counter=0
-        self.smoke_counter=0
-        self.phone_counter=0
+        self.drowsiness_counter = 0
+        self.cover_counter = 0
+        self.attention_counter = 0
+        self.smoke_counter = 0
+        self.phone_counter = 0
 
         #camera and text font
-        self.camera=cv2.VideoCapture(camera)
+        self.camera = cv2.VideoCapture(camera)
 
         #for saving all anomalies run time.
-        self.anomalies=dict()
+        self.anomalies = dict()
 
         #log and image save adaptibility
-        self.last_err=""
-        self.last_err_time=0
+        self.last_err = ""
+        self.last_err_time = 0
 
         #Files Paths
         #self.alert_path="Sounds/"
@@ -52,19 +52,19 @@ class DriverSafety():
         #self.models_path="Models/"
         
         #Create some directory
-        self.alert_path=self.createPath("Sounds/")
-        self.save_image_path=self.createPath("Images/")
-        self.models_path=self.createPath("Models/")
+        self.alert_path = self.create_path("Sounds/")
+        self.save_image_path = self.create_path("Images/")
+        self.models_path = self.create_path("Models/")
         
         #yolo models-facial ladmarks models
         self.models()
 
         #start camera
-        self.startVideoStream(self.camera)
+        self.start_video_stream(self.camera)
 
 
     #create directory if is not exist.
-    def createPath(self,path):
+    def create_path(self, path):
 
         try:
             os.mkdir(path)
@@ -77,9 +77,9 @@ class DriverSafety():
     def models(self):
 
         #dlib model
-        face_landmarks=self.models_path+"shape_predictor_68_face_landmarks.dat"
-        self.detector=dlib.get_frontal_face_detector()
-        self.predictor=dlib.shape_predictor(face_landmarks)
+        FACE_LANDMARKS = self.models_path+"shape_predictor_68_face_landmarks.dat"
+        self.detector = dlib.get_frontal_face_detector()
+        self.predictor = dlib.shape_predictor(FACE_LANDMARKS)
         
         #eyes location index
         (self.l_start, self.l_end) = face_utils.FACIAL_LANDMARKS_IDXS["left_eye"]
@@ -89,27 +89,29 @@ class DriverSafety():
         #yolov4_tiny->low accuracy, high fps
         #yolov4->high accuracy, low fps
 
-        #self.net=cv2.dnn.readNet(self.models_path+"yolov4-tiny_training_last.weights",self.models_path+"yolov4-tiny_testing.cfg")
-        self.net=cv2.dnn.readNet(self.models_path+"yolov4_training_last.weights",self.models_path+"yolov4_testing.cfg")#2.64
+        #self.net = cv2.dnn.readNet(self.models_path + "yolov4-tiny_training_last.weights",
+        #                           self.models_path + "yolov4-tiny_testing.cfg")
+        self.net = cv2.dnn.readNet(self.models_path + "yolov4_training_last.weights",
+                                    self.models_path + "yolov4_testing.cfg") #2.64
 
 
     #threads start function
-    def startThreads(self,_target,_args=()):
+    def start_threads(self, target_, args_=()):
 
-        t=Thread(target=_target,args=_args)
-        t.daemon=True
+        t=Thread(target=target_, args=args_)
+        t.daemon = True
         t.start()
         t.join()
 
 
     #Camera Run
-    def startVideoStream(self,camera):
+    def start_video_stream(self, camera):
 
-        time.sleep(2.0)#waiting for camera build up
+        time.sleep(2.0) #waiting for camera build up
         
         while True:
 
-            ret,self.frame=camera.read()#read camera 
+            ret, self.frame = camera.read() #read camera 
             
             #if camera does not respond, shuts down system
             if not ret:
@@ -126,101 +128,102 @@ class DriverSafety():
             
             #if camera is blocked
             if not self.gray.any():
-                self.startThreads(self.controlCameraBlocked)
+                self.start_threads(self.camera_blocked_detection)
 
             #if grayscale image is dark, it is made brighter using Histogram Equalizer.
-            if np.mean(self.gray)/255 < self.hist_equ_threshold:
-                self.histogramEqualization()
+            if np.mean(self.gray)/255 < self.HIST_EQU_THRESHOLD:
+                self.histogram_equalization()
             
             #start object detection control, facial landmarks control and driver attention detection
-            self.startThreads(self.objectDetection)
-            self.startThreads(self.faceAndEyesDetection)
+            self.start_threads(self.object_detection)
+            self.start_threads(self.face_and_eyes_detection)
 
-            self.startThreads(self.attentionDetection)
-            self.startThreads(self.phoneDetection)
-            self.startThreads(self.smokeDetection)
+            self.start_threads(self.attention_detection)
+            self.start_threads(self.phone_detection)
+            self.start_threads(self.smoke_detection)
 
             #show camera
-            cv2.imshow("Camera",self.frame)
+            cv2.imshow("Camera", self.frame)
             
             #press ESC or Q close camera
             key=cv2.waitKey(1) & 0xff
-            if key==27 or key==ord("q"):
+
+            if key == 27 or key == ord("q"):
                 break
 
         #stop processing
-        self.stopVideoStream()
+        self.stop_video_stream()
 
 
-    def histogramEqualization(self):
+    def histogram_equalization(self):
         
         #divide blue,green,red channels
-        b_ch,g_ch,r_ch=np.dsplit(self.frame,3)
+        b_ch, g_ch, r_ch = np.dsplit(self.frame, 3)
         
         #Histogram Equalization, blue,green,red channels and grayscale frame.
-        b_ch,g_ch,r_ch,self.gray=map(cv2.equalizeHist,[b_ch,g_ch,r_ch,self.gray])
+        b_ch, g_ch, r_ch, self.gray = map(cv2.equalizeHist, [b_ch, g_ch, r_ch, self.gray])
         
         #combine channels->frame.
-        self.frame=np.dstack((b_ch,g_ch,r_ch))
+        self.frame = np.dstack((b_ch, g_ch, r_ch))
 
 
-    def controlCameraBlocked(self):
+    def camera_blocked_detection(self):
 
         #if camera blocked, when reach specified time, run warning and save image. 
-        self.cover_counter+=1
+        self.cover_counter += 1
 
-        if self.cover_counter>self.cover_consec_frames:
-            self.errorTimeControl("Camera Blocked",5)
+        if self.cover_counter > self.COVER_CONSEC_FRAMES:
+            self.error_time_control("Camera Blocked", 5)
             self.warning("BlockedCameraWarning.mp3")
-            self.cover_counter=0
+            self.cover_counter = 0
             
         if self.gray.any():
-            self.cover_counter=0
+            self.cover_counter = 0
 
 
     #Yolo Object Detection
-    def objectDetection(self):
+    def object_detection(self):
        
-        height,width,_ = self.frame.shape
+        height, width, _ = self.frame.shape
         
         #scores list and object id list
-        confidences=[]
-        class_ids=[]#classes id->0-person, 1-phone, 2-smoke
+        confidences = list()
+        class_ids = list() #classes id->0-person, 1-phone, 2-smoke
 
         #image to blob and detect object
-        blob=cv2.dnn.blobFromImage(self.frame,1/255,(512,512),(0,0,0),swapRB=True,crop=False)
+        blob = cv2.dnn.blobFromImage(self.frame, 1/255, (512,512), (0,0,0), swapRB=True, crop=False)
         self.net.setInput(blob)
 
-        out_layers_name=self.net.getUnconnectedOutLayersNames()
-        layer_outs=self.net.forward(out_layers_name)
+        out_layers_name = self.net.getUnconnectedOutLayersNames()
+        layer_outs = self.net.forward(out_layers_name)
 
 
         #if there are any object
         for out in layer_outs:
             for detection in out:
-                score=detection[5:]
-                class_id=np.argmax(score)#object index
-                confidence=score[class_id]#score is detected object
+                score = detection[5:]
+                class_id = np.argmax(score)#object index
+                confidence = score[class_id]#score is detected object
                 
                 #if score %50 coordination and boxes process
-                if confidence>0.3:
-                    center_x=int(detection[0]*width)
-                    center_y=int(detection[0]*height)
+                if confidence > 0.3:
+                    center_x = int(detection[0]*width)
+                    center_y = int(detection[0]*height)
                     
-                    w=int(detection[2]*width)
-                    h=int(detection[2]*height)
+                    w = int(detection[2]*width)
+                    h = int(detection[2]*height)
                     
-                    x=int(center_x-w/2)
-                    y=int(center_y-h/2)
+                    x = int(center_x-w/2)
+                    y = int(center_y-h/2)
 
                     confidences.append(float(confidence))
                     class_ids.append(class_id)
         #use control object detection
-        self.control_class_id=class_ids.copy()
+        self.control_class_id = class_ids.copy()
 
 
     #Calculate eye aspect ratio
-    def findEyeAspectRatio(self,eye):
+    def find_eye_aspect_ratio(self, eye):
 
         first_height = dist.euclidean(eye[1], eye[5])
         second_height = dist.euclidean(eye[2], eye[4])
@@ -232,9 +235,9 @@ class DriverSafety():
 
 
     #Face and Eye detection with dlib
-    def faceAndEyesDetection(self):
+    def face_and_eyes_detection(self):
 
-        self.rects=self.detector(self.gray,0)
+        self.rects = self.detector(self.gray, 0)
 
         for rect in self.rects:
 
@@ -245,61 +248,62 @@ class DriverSafety():
             left_eye = shape[self.l_start:self.l_end]
             right_eye = shape[self.r_start:self.r_end]
 
-            left_ear = self.findEyeAspectRatio(left_eye)
-            right_ear = self.findEyeAspectRatio(right_eye)
+            left_ear = self.find_eye_aspect_ratio(left_eye)
+            right_ear = self.find_eye_aspect_ratio(right_eye)
             ear = (left_ear + right_ear) / 2.0
 
-            self.drowsinessDetection(ear)
+            self.drowsiness_detection(ear)
 
 
     #if driver look another direction long time, run warning and save image
-    def attentionDetection(self):
+    def attention_detection(self):
 
         try:
             #if yolo model detect person->True, else False
-            control=True if 0 in self.control_class_id else False
+            control = True if 0 in self.control_class_id else False
 
             #if yolo model detect person but dlib model doesn't detect face.
             if not (not control or self.rects):
-                self.attention_counter+=1
-                if self.attention_counter>self.attention_consec_frames:
-                    self.errorTimeControl("attention",2)
+                self.attention_counter += 1
+                
+                if self.attention_counter > self.ATTENTION_CONSEC_FRAMES:
+                    self.error_time_control("attention", 2)
                     self.warning("attentionWarning.mp3")
-                    self.attention_counter=0
+                    self.attention_counter = 0
             
             else:
-                self.attention_counter=0
+                self.attention_counter = 0
        
         except:
             pass
 
 
     #if detect cigarette, run warning and save image
-    def smokeDetection(self):
+    def smoke_detection(self):
 
-        self.smoke_counter=self.objectControl(2,self.smoke_counter,"Smoke",3,"smokeWarning.mp3")
+        self.smoke_counter = self.object_control(2, self.smoke_counter, "Smoke", 3, "smokeWarning.mp3")
 
 
     #if detect phone, run warning and save image    
-    def phoneDetection(self):
+    def phone_detection(self):
 
-        self.phone_counter=self.objectControl(1,self.phone_counter,"Phone",4,"phoneWarning.mp3")
+        self.phone_counter = self.object_control(1, self.phone_counter, "Phone", 4, "phoneWarning.mp3")
     
 
-    def objectControl(self,class_id,counter,error,error_code,warning_name):
+    def object_control(self, class_id, counter, error, error_code, warning_name):
         try:
-            control=True if class_id in self.control_class_id else False
+            control = True if class_id in self.control_class_id else False
             
             if control:
-                counter+=1
+                counter += 1
 
-                if counter>=self.object_consec_frames:
-                    self.errorTimeControl(error,error_code)
+                if counter >= self.OBJECT_CONSEC_FRAMES:
+                    self.error_time_control(error, error_code)
                     self.warning(warning_name)
-                    counter=0
+                    counter = 0
             
             else:
-                counter=0
+                counter = 0
             return counter
 
         except:
@@ -307,77 +311,77 @@ class DriverSafety():
 
 
     #if eyes aspect ratio < identified threshold. run warning and save image.
-    def drowsinessDetection(self,ear):
+    def drowsiness_detection(self, ear):
 
         #if eyes aspect ratio is smaller than threshold.
         if ear < self.eyes_ar_threshold:
             self.drowsiness_counter += 1
 
-            if self.drowsiness_counter >= self.eye_ar_consec_frames:
-                self.errorTimeControl("Drowsiness",1)
+            if self.drowsiness_counter >= self.EYE_AR_CONSEC_FRAMES:
+                self.error_time_control("Drowsiness", 1)
                 self.warning("Drowsiness.mp3")
-                self.drowsiness_counter=0
+                self.drowsiness_counter = 0
 
         else:
             self.drowsiness_counter = 0
 
 
     #play warning sounds
-    def warning(self,file):
+    def warning(self, file):
         
-        path=self.alert_path+file
+        path = self.alert_path+file
         playsound.playsound(path)
         time.sleep(1.0)
 
 
     #error time control, if error is same, must be wait 5(changeable) second save it.
-    def errorTimeControl(self,error,error_code):
+    def error_time_control(self, error, error_code):
         
-        if error==self.last_err:
-            if time.time()-self.last_err_time>5:
-                self.saveImage(error,error_code)
+        if error == self.last_err:
+            if time.time() - self.last_err_time > 5:
+                self.save_image(error, error_code)
 
         else:
-            self.saveImage(error,error_code)
+            self.save_image(error, error_code)
 
 
     #if detected any anomaly, save it.
-    def saveImage(self,error,error_code):
+    def save_image(self, error, error_code):
        
-        self.last_err_time=time.time()
+        self.last_err_time = time.time()
 
-        img="{}_{}_{}.jpg".format(error_code,error,self.last_err_time)
+        img = "{}_{}_{}.jpg".format(error_code, error, self.last_err_time)
         
-        saved_img=self.save_image_path+img
+        saved_img = self.save_image_path+img
         
-        cv2.imwrite(saved_img,self.frame)
+        cv2.imwrite(saved_img, self.frame)
         
-        self.err=error
+        self.err = error
         
-        base64_image=self.imagetoBase64()
+        base64_image = self.image_to_base64()
         
-        self.jsonData(img,base64_image)
+        self.json_data(img, base64_image)
 
 
     #image to base64 format    
-    def imagetoBase64(self):
+    def image_to_base64(self):
 
-        flag,encoded_image=cv2.imencode(".jpg",self.frame)
+        flag,encoded_image = cv2.imencode(".jpg", self.frame)
 
-        base64_image=base64.b64encode(encoded_image)
-        base64_image=base64_image.decode("utf-8")
+        base64_image = base64.b64encode(encoded_image)
+        base64_image = base64_image.decode("utf-8")
         
         return base64_image
 
 
     #base64 format save in json format
-    def jsonData(self,img,base64_image):
+    def json_data(self, img, base64_image):
         
-        img=img[:-4]#drop jpg extension
+        img = img[:-4]#drop jpg extension
         
-        data={img:base64_image}
+        data = {img: base64_image}
 
-        saved_path=self.save_image_path+img+".json"
+        saved_path = self.save_image_path+img+".json"
 
 
         with open(saved_path, 'a') as outfile:
@@ -385,12 +389,12 @@ class DriverSafety():
 
 
     #release camera, close camera window.
-    def stopVideoStream(self):
+    def stop_video_stream(self):
  
         self.camera.release()
         cv2.destroyAllWindows()
 
 
 
-if __name__=="__main__":
-    driver=DriverSafety()
+if __name__ == "__main__":
+    driver = DriverSafety()
