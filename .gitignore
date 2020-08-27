@@ -12,7 +12,7 @@ detection.py
 FaceDetection.py
 ObjectDetection.py
 Main.py
-
+/templates
 __pycache__
 yolov4_training_last.weights
 yolov4_testing.cfg

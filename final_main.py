@@ -20,7 +20,7 @@ from scipy.spatial import distance as dist
 
 class DriverSafety():
 
-    def __init__(self, camera=0):
+    def __init__(self, camera=0, tiny=False):
 
         # Thresholds
         self.EYES_AR_THRESHOLD = 0.24  # Eyes aspect ratio threshold
@@ -58,7 +58,7 @@ class DriverSafety():
         self.models_path = self.create_path("Models/")
 
         # yolo models-facial ladmarks models
-        self.models()
+        self.models(tiny)
 
         # start camera
         self.start_video_stream(self.camera)
@@ -75,7 +75,7 @@ class DriverSafety():
 
     # Yolo Models/Facial Landmarks
 
-    def models(self):
+    def models(self, tiny):
 
         # dlib model
         FACE_LANDMARKS = self.models_path+"shape_predictor_68_face_landmarks.dat"
@@ -93,15 +93,16 @@ class DriverSafety():
         # yolov4_tiny->low accuracy, high fps
         # yolov4->high accuracy, low fps
 
-        # self.net = cv2.dnn.readNet(
-        #     self.models_path + "yolov4-tiny_training_last.weights",
-        #     self.models_path + "yolov4-tiny_testing.cfg"
-        # )
-
-        self.net = cv2.dnn.readNet(
-            self.models_path + "yolov4_training_last.weights",
-            self.models_path + "yolov4_testing.cfg"
-        )  # 2.64
+        if tiny:
+            self.net = cv2.dnn.readNet(
+                self.models_path+"yolov4-tiny_training_last.weights",
+                self.models_path+"yolov4-tiny_testing.cfg"
+            )
+        else:
+            self.net = cv2.dnn.readNet(
+                self.models_path+"yolov4_training_last.weights",
+                self.models_path+"yolov4_testing.cfg"
+            )
 
     # threads start function
 
@@ -405,4 +406,4 @@ class DriverSafety():
 
 
 if __name__ == "__main__":
-    driver = DriverSafety()
+    driver = DriverSafety(tiny=False)

@@ -20,7 +20,7 @@ from scipy.spatial import distance as dist
 
 class DriverSafety():
 
-    def __init__(self, camera=0):
+    def __init__(self, camera=0, tiny=False):
         """ 
         Document will be added.
         """
@@ -56,7 +56,7 @@ class DriverSafety():
         self.models_path = self.create_path("Models/")
 
         # yolo models-facial ladmarks models
-        self.models()
+        self.models(tiny)
 
         # start camera
         self.start_video_stream(self.camera)
@@ -74,7 +74,7 @@ class DriverSafety():
 
     # Yolo Models/Facial Landmarks
 
-    def models(self):
+    def models(self, tiny):
         """ 
         Document will be added.
         """
@@ -93,19 +93,19 @@ class DriverSafety():
         # yolo model
         # yolov4_tiny->low accuracy, high fps
         # yolov4->high accuracy, low fps
-
-        # self.net = cv2.dnn.readNet(
-        #    self.models_path+"yolov4-tiny_training_last.weights",
-        #    self.models_path+"yolov4-tiny_testing.cfg"
-        # )
-
-        self.net = cv2.dnn.readNet(
-            self.models_path+"yolov4_training_last.weights",
-            self.models_path+"yolov4_testing.cfg"
-        )
+        if tiny:
+            self.net = cv2.dnn.readNet(
+                self.models_path+"yolov4-tiny_training_last.weights",
+                self.models_path+"yolov4-tiny_testing.cfg"
+            )
+        else:
+            self.net = cv2.dnn.readNet(
+                self.models_path+"yolov4_training_last.weights",
+                self.models_path+"yolov4_testing.cfg"
+            )
 
         # classes
-        self.classes = ["person", "phone", "smoke"]
+        self.classes = ("person", "phone", "smoke")
 
     # threads start function
     def start_threads(self, target_, args_=()):
@@ -191,7 +191,7 @@ class DriverSafety():
         print("Cover:", self.cover_counter)
 
         # self.attention_counter=0->if using tiny. bug.
-        if self.cover_counter > self.cover_consec_frames:
+        if self.cover_counter > self.COVER_CONSEC_FRAMES:
             self.error_time_control("Camera Blocked", 5)
             self.warning("BlockedCameraWarning.mp3")
             self.cover_counter = 0
@@ -313,8 +313,8 @@ class DriverSafety():
                 self.attention_counter += 1
                 print("attention:", self.attention_counter)
                 if self.attention_counter > self.ATTENTION_CONSEC_FRAMES:
-                    self.error_time_control("attention", 2)
-                    self.warning("attentionWarning.mp3")
+                    self.error_time_control("Attention", 2)
+                    self.warning("AttentionWarning.mp3")
                     self.attention_counter = 0
                     # time.sleep(5.0)
             else:
@@ -330,7 +330,7 @@ class DriverSafety():
         """
 
         self.smoke_counter = self.object_control(
-            2, self.smoke_counter, "Smoke", 3, "smokeWarning.mp3")
+            2, self.smoke_counter, "Smoke", 3, "SmokeWarning.mp3")
 
         print("Smoke:", self.smoke_counter)
 
@@ -341,7 +341,7 @@ class DriverSafety():
         """
 
         self.phone_counter = self.object_control(
-            1, self.phone_counter, "Phone", 4, "phoneWarning.mp3")
+            1, self.phone_counter, "Phone", 4, "PhoneWarning.mp3")
 
         print("Phone:", self.phone_counter)
 
@@ -352,7 +352,7 @@ class DriverSafety():
             if control:
                 counter += 1
 
-                if counter >= self.object_consec_frames:
+                if counter >= self.OBJECT_CONSEC_FRAMES:
                     self.error_time_control(error, error_code)
                     self.warning(warning_name)
                     counter = 0
@@ -376,7 +376,7 @@ class DriverSafety():
             print("Drowsiness:", self.drowsiness_counter)
             if self.drowsiness_counter >= self.EYE_AR_CONSEC_FRAMES:
                 self.error_time_control("Drowsiness", 1)
-                self.warning("Drowsiness.mp3")
+                self.warning("DrowsinessWarning.mp3")
                 self.drowsiness_counter = 0
                 # time.sleep(3.0)
         else:
@@ -474,4 +474,4 @@ class DriverSafety():
 
 
 if __name__ == "__main__":
-    driver = DriverSafety()
+    driver = DriverSafety(tiny=True)
