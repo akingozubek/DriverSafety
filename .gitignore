@@ -2,13 +2,11 @@
 *.names
 *.vscode
 *.json
-
+*.mp4
 
 
 log.txt
-app.py
 deneme.py
-detection.py
 FaceDetection.py
 ObjectDetection.py
 Main.py

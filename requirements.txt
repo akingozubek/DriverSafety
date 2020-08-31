@@ -5,4 +5,3 @@ playsound==1.2.2
 opencv-python==4.4.0.40
 dlib==19.20.0
 flask==1.1.2
-python==3.8.5
