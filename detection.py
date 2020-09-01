@@ -236,7 +236,7 @@ class DriverSafety():
             for i in idx.flatten():
                 x, y, w, h = boxes[i]
                 label = str(self.classes[class_ids[i]])
-                #print(label)
+                # print(label)
                 confidence = str(round(confidences[i], 2))
                 cv2.rectangle(self.frame, (x, y), (x+w, y+h), color, 1)
                 cv2.putText(self.frame, label+confidence, (x, y+20),
@@ -294,7 +294,7 @@ class DriverSafety():
                 self.attention_counter += 1
                 #print("attention:", self.attention_counter)
                 if self.attention_counter > self.ATTENTION_CONSEC_FRAMES:
-                    self.error_time_control("attention", 2)
+                    self.error_time_control("Attention", 2)
                     self.warning("attentionWarning.mp3")
                     self.attention_counter = 0
                     # time.sleep(5.0)
@@ -357,7 +357,7 @@ class DriverSafety():
             print("Drowsiness:", self.drowsiness_counter)
             if self.drowsiness_counter >= self.EYE_AR_CONSEC_FRAMES:
                 self.error_time_control("Drowsiness", 1)
-                self.warning("Drowsiness.mp3")
+                self.warning("DrowsinessWarning.mp3")
                 self.drowsiness_counter = 0
                 # time.sleep(3.0)
         else:
@@ -417,13 +417,13 @@ class DriverSafety():
         return base64_image
 
     def json_data(self, img, base64_image):
-        
+
         img = img[:-4]  # drop jpg extension
 
         data = {img: base64_image}
         saved_path = self.save_image_path+img+".json"
 
-        self.anomalies[img]=base64_image
+        self.anomalies[img] = base64_image
         with open(saved_path, 'a') as outfile:
             json.dump(data, outfile)
 
@@ -440,9 +440,9 @@ class DriverSafety():
             f.write(current_log)
 
     # put text camera screen, may be deleted
-    #def put_text_video_stream(self, text, value, x, y):
-        #cv2.putText(self.frame, text + " : {:.3f}".format(value), (x, y),
-                    #self.font, 2, (0, 0, 0), 2)
+    # def put_text_video_stream(self, text, value, x, y):
+        # cv2.putText(self.frame, text + " : {:.3f}".format(value), (x, y),
+            # self.font, 2, (0, 0, 0), 2)
 
     # release camera, close camera window and log it.
 
