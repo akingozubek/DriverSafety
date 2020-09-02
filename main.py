@@ -26,10 +26,10 @@ class DriverSafety():
         """
         # Thresholds
         self.EYES_AR_THRESHOLD = 0.24  # Eyes aspect ratio threshold
-        self.EYE_AR_CONSEC_FRAMES = 5  # drowsiness frames count
-        self.OBJECT_CONSEC_FRAMES = 5  # detect object frames count
-        self.COVER_CONSEC_FRAMES = 5  # cover camera frames count
-        self.ATTENTION_CONSEC_FRAMES = 5  # attenion detect frames count
+        self.EYE_AR_CONSEC_FRAMES = 30  # drowsiness frames count
+        self.OBJECT_CONSEC_FRAMES = 30  # detect object frames count
+        self.COVER_CONSEC_FRAMES = 30  # cover camera frames count
+        self.ATTENTION_CONSEC_FRAMES = 60  # attenion detect frames count
         self.HIST_EQU_THRESHOLD = 0.3  # histogram equalization threshold
 
         # Counters
@@ -125,11 +125,14 @@ class DriverSafety():
         time.sleep(2.0)  # waiting for camera build up
 
         self.log_file("Camera Opened")  # Camera Open Log
-
+        frame = 0
         while True:
+            print("frame:", frame)
+
+            print(time.strftime("%X"))
 
             ret, self.frame = camera.read()  # read camera
-
+            frame += 1
             # if camera does not respond, shuts down system
             if not ret:
                 break
@@ -188,14 +191,12 @@ class DriverSafety():
         """
         # if camera blocked, when reach specified time, run warning and save image.
         self.cover_counter += 1
-        print("Cover:", self.cover_counter)
 
         # self.attention_counter=0->if using tiny. bug.
         if self.cover_counter > self.COVER_CONSEC_FRAMES:
             self.error_time_control("Camera Blocked", 5)
             self.warning("BlockedCameraWarning.mp3")
             self.cover_counter = 0
-            # time.sleep(5.0)
         if self.gray.any():
             self.cover_counter = 0
 
@@ -255,12 +256,10 @@ class DriverSafety():
             for i in idx.flatten():
                 x, y, w, h = boxes[i]
                 label = str(self.classes[class_ids[i]])
-                print(label)
                 confidence = str(round(confidences[i], 2))
-                cv2.rectangle(self.frame, (x, y), (x+w, y+h), color, 1)
-                cv2.putText(self.frame, label+confidence, (x, y+20),
-                            self.font, 2, (255, 255, 255), 2)
-            # self.putTextVideoStream(label,confidence,x,y+10)
+                #cv2.rectangle(self.frame, (x, y), (x+w, y+h), color, 1)
+                # cv2.putText(self.frame, label+confidence, (x, y+20),
+                #            self.font, 2, (255, 255, 255), 2)
         except:
             pass
 
@@ -297,7 +296,7 @@ class DriverSafety():
             ear = (left_ear + right_ear) / 2.0
 
             self.drowsiness_detection(ear)
-            self.put_text_video_stream("EAR", ear, 250, 30)
+            #self.put_text_video_stream("EAR", ear, 250, 30)
 
     # if driver look another direction long time, run warning and save image
 
@@ -308,15 +307,12 @@ class DriverSafety():
 
         try:
             control = True if 0 in self.control_class_id else False
-            print("control:", control)
             if not (not control or self.rects):
                 self.attention_counter += 1
-                print("attention:", self.attention_counter)
                 if self.attention_counter > self.ATTENTION_CONSEC_FRAMES:
                     self.error_time_control("Attention", 2)
                     self.warning("AttentionWarning.mp3")
                     self.attention_counter = 0
-                    # time.sleep(5.0)
             else:
                 self.attention_counter = 0
         except:
@@ -332,9 +328,8 @@ class DriverSafety():
         self.smoke_counter = self.object_control(
             2, self.smoke_counter, "Smoke", 3, "SmokeWarning.mp3")
 
-        print("Smoke:", self.smoke_counter)
-
     # if detect phone, run warning and save image
+
     def phone_detection(self):
         """ 
         Document will be added.
@@ -342,8 +337,6 @@ class DriverSafety():
 
         self.phone_counter = self.object_control(
             1, self.phone_counter, "Phone", 4, "PhoneWarning.mp3")
-
-        print("Phone:", self.phone_counter)
 
     def object_control(self, class_id, counter, error, error_code, warning_name):
         try:
@@ -372,13 +365,10 @@ class DriverSafety():
         """
         if ear < self.EYES_AR_THRESHOLD:
             self.drowsiness_counter += 1
-            print(time.strftime("%X"))
-            print("Drowsiness:", self.drowsiness_counter)
             if self.drowsiness_counter >= self.EYE_AR_CONSEC_FRAMES:
                 self.error_time_control("Drowsiness", 1)
                 self.warning("DrowsinessWarning.mp3")
                 self.drowsiness_counter = 0
-                # time.sleep(3.0)
         else:
             self.drowsiness_counter = 0
 
@@ -390,7 +380,6 @@ class DriverSafety():
 
         path = self.alert_path+file
         playsound.playsound(path)
-        time.sleep(2.0)
 
     # error time control, if error is same, must be wait 5(changeable) second save it.
     def error_time_control(self, error, error_code):
@@ -414,7 +403,7 @@ class DriverSafety():
 
         saved_img = self.save_image_path+img
 
-        cv2.imwrite(saved_img, self.frame)
+        #cv2.imwrite(saved_img, self.frame)
 
         self.log_file(error)
         self.err = error
@@ -458,9 +447,9 @@ class DriverSafety():
             f.write(current_log)
 
     # put text camera screen, may be deleted
-    def put_text_video_stream(self, text, value, x, y):
-        cv2.putText(self.frame, text + " : {:.3f}".format(value), (x, y),
-                    self.font, 2, (0, 0, 0), 2)
+    # def put_text_video_stream(self, text, value, x, y):
+    #    cv2.putText(self.frame, text + " : {:.3f}".format(value), (x, y),
+    #                self.font, 2, (0, 0, 0), 2)
 
     # release camera, close camera window and log it.
 

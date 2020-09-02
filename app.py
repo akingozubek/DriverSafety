@@ -1,15 +1,15 @@
 import os
 import time
-from threading import Lock, Thread
+from threading import Thread
 
 import cv2
 from flask import Flask, Response, jsonify, redirect, request, url_for
+from waitress import serve
 from werkzeug.utils import secure_filename
 
 from detection import DriverSafety
 
 outputFrame = None
-lock = Lock()
 
 
 UPLOAD_DIRECTORY = "Uploads"
@@ -17,9 +17,7 @@ if not os.path.exists(UPLOAD_DIRECTORY):
     os.mkdir(UPLOAD_DIRECTORY)
 
 app = Flask(__name__)
-# app.secret_key="secret_key"
 app.config["UPLOAD_FOLDER"] = UPLOAD_DIRECTORY
-# app.config["MAX_CONTENT_LENGTH"]=16*1024*1024
 
 
 ALLOWED_EXTENSION = {"mp4"}
@@ -51,7 +49,7 @@ def main():
             file.save(file_path)
             response = jsonify({'message': 'File successfully uploaded'})
             response.status_code = 201
-            #return response
+            # return response
             return redirect(url_for("detectDriver", video=file_path))
 
         else:
@@ -63,7 +61,7 @@ def main():
 
 @app.route('/detection', methods=["GET"])
 def detectDriver():
-    global outputFrame, lock
+    global outputFrame
 
     if request.method == "GET":
         args = request.args.get("video")
@@ -72,37 +70,34 @@ def detectDriver():
             args = int(args)
         driver = DriverSafety(args)
 
-        # timer will be deleted.
-        timer = 0
-        while timer <= 10:
-            driver.start_video_stream(driver.camera)
-            timer += 1
-            print("timer:", timer)
-            with lock:
-                outputFrame = driver.frame.copy()
-        driver.stop_video_stream()
+        while True:
+            ret = driver.start_video_stream(driver.camera)
 
+            if not ret:
+                break
+
+            outputFrame = driver.frame.copy()
+        driver.stop_video_stream()
+        os.remove(args)
         return jsonify(driver.anomalies)
 
 
 def generate():
     # grab global references to the output frame and lock variables
-    global outputFrame, lock
+    global outputFrame
 
     # loop over frames from the output stream
     while True:
-        # wait until the lock is acquired
-        with lock:
-            # check if the output frame is available, otherwise skip
-            # the iteration of the loop
-            if outputFrame is None:
-                continue
+        # check if the output frame is available, otherwise skip
+        # the iteration of the loop
+        if outputFrame is None:
+            continue
 
-            # encode the frame in JPEG format
-            (flag, encodedImage) = cv2.imencode(".jpg", outputFrame)
-            # ensure the frame was successfully encoded
-            if not flag:
-                continue
+        # encode the frame in JPEG format
+        (flag, encodedImage) = cv2.imencode(".jpg", outputFrame)
+        # ensure the frame was successfully encoded
+        if not flag:
+            continue
 
         # yield the output frame in the byte format
         yield(b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' +
@@ -118,4 +113,5 @@ def video_feed():
 
 
 if __name__ == "__main__":
-    app.run(host="192.168.10.110", port=8080, debug=True)
+    #app.run(host="192.168.10.110", port=8080, debug=True)
+    serve(app, host="192.168.10.110", port=8080)

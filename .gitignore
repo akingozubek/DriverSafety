@@ -1,16 +1,10 @@
 *.jpg
-*.names
 *.vscode
 *.json
 *.mp4
-
+*.pytest_cache
+__pycache__
 
 log.txt
-deneme.py
-FaceDetection.py
-ObjectDetection.py
-Main.py
-/templates
-__pycache__
 yolov4_training_last.weights
 yolov4_testing.cfg

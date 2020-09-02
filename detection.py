@@ -19,11 +19,12 @@ class DriverSafety():
     def __init__(self, camera=0):
 
         # Threshold Variables
+        # yolo-tiny 5.0~5.5 fps, yolo 0.7~0.8 fps
         self.EYES_AR_THRESHOLD = 0.24  # Eyes aspect ratio threshold
-        self.EYE_AR_CONSEC_FRAMES = 5  # drowsiness frames count
-        self.OBJECT_CONSEC_FRAMES = 5  # detect object frames count
-        self.COVER_CONSEC_FRAMES = 5  # cover camera frames count
-        self.ATTENTION_CONSEC_FRAMES = 5  # attenion detect frames count
+        self.EYE_AR_CONSEC_FRAMES = 25  # drowsiness frames count
+        self.OBJECT_CONSEC_FRAMES = 15  # detect object frames count
+        self.COVER_CONSEC_FRAMES = 25  # cover camera frames count
+        self.ATTENTION_CONSEC_FRAMES = 30  # attenion detect frames count
         self.HIST_EQU_THRESHOLD = 0.3  # histogram equalization threshold
 
         # Counters
@@ -110,6 +111,8 @@ class DriverSafety():
 
         ret, self.frame = camera.read()  # read camera
 
+        if not ret:
+            return ret
         # if not using camera can be activated.
         # self.frame=cv2.rotate(self.frame, cv2.ROTATE_90_CLOCKWISE)
 
@@ -134,6 +137,8 @@ class DriverSafety():
         self.start_threads(self.attention_detection)
         self.start_threads(self.phone_detection)
         self.start_threads(self.smoke_detection)
+
+        return ret
 
     # histogram equalization -> frame(blue,gray,red channels) and grayscale frame.
 
@@ -336,7 +341,6 @@ class DriverSafety():
 
         path = self.alert_path+file
         playsound.playsound(path)
-        time.sleep(2.0)
 
     # error time control, if error is same, must be wait 5(changeable) second save it.
 
@@ -384,7 +388,7 @@ class DriverSafety():
         saved_path = self.save_image_path+img+".json"
 
         self.anomalies[img] = base64_image
-        #with open(saved_path, 'a') as outfile:
+        # with open(saved_path, 'a') as outfile:
         #    json.dump(data, outfile)
 
     # logs
