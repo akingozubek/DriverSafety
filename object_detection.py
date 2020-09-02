@@ -5,7 +5,7 @@ net = cv2.dnn.readNet(
     "Models/yolov4-tiny_training_last.weights", "Models/yolov4-tiny_testing.cfg")
 
 
-classes = ("person","phone","smoke")
+classes = ("person", "phone", "smoke")
 
 cam = cv2.VideoCapture(0)
 
@@ -63,5 +63,6 @@ while True:
     k = cv2.waitKey(10) & 0xff
     if k == 27:
         break
+    
 cam.release()
 cv2.destroyAllWindows()
