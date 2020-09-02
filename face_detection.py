@@ -1,14 +1,15 @@
 # import the necessary packages
-from scipy.spatial import distance as dist
+import time
 from threading import Thread
-from imutils.video import VideoStream
-from imutils import face_utils
+
+import cv2
+import dlib
 import imutils
 import numpy as np
 import playsound
-import time
-import cv2
-import dlib
+from imutils import face_utils
+from imutils.video import VideoStream
+from scipy.spatial import distance as dist
 
 
 def warning_alert(file):

@@ -63,6 +63,6 @@ while True:
     k = cv2.waitKey(10) & 0xff
     if k == 27:
         break
-    
+
 cam.release()
 cv2.destroyAllWindows()

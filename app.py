@@ -1,12 +1,12 @@
+import os
 import time
 from threading import Lock, Thread
 
 import cv2
-import os
-from flask import Flask, Response, jsonify, request, redirect, url_for
+from flask import Flask, Response, jsonify, redirect, request, url_for
+from werkzeug.utils import secure_filename
 
 from detection import DriverSafety
-from werkzeug.utils import secure_filename
 
 outputFrame = None
 lock = Lock()
@@ -51,7 +51,7 @@ def main():
             file.save(file_path)
             response = jsonify({'message': 'File successfully uploaded'})
             response.status_code = 201
-            # return response
+            #return response
             return redirect(url_for("detectDriver", video=file_path))
 
         else:

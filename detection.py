@@ -384,8 +384,8 @@ class DriverSafety():
         saved_path = self.save_image_path+img+".json"
 
         self.anomalies[img] = base64_image
-        with open(saved_path, 'a') as outfile:
-            json.dump(data, outfile)
+        #with open(saved_path, 'a') as outfile:
+        #    json.dump(data, outfile)
 
     # logs
 
