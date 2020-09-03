@@ -20,14 +20,14 @@ app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = UPLOAD_DIRECTORY
 
 
-ALLOWED_EXTENSION = {"mp4","avi","wmv"}
+ALLOWED_EXTENSION = {"mp4", "avi", "wmv"}
 
 
 def allowed_extension(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSION
 
 
-@app.route("/", methods=["GET","POST"])
+@app.route("/", methods=["GET", "POST"])
 def main():
 
     if request.method == "POST":
