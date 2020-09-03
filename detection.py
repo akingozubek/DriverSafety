@@ -16,7 +16,7 @@ from scipy.spatial import distance as dist
 
 class DriverSafety():
 
-    def __init__(self, camera=0):
+    def __init__(self, camera=0, tiny=True):
 
         # Threshold Variables
         # yolo-tiny 5.0~5.5 fps, yolo 0.7~0.8 fps
@@ -50,7 +50,7 @@ class DriverSafety():
         self.models_path = self.create_path("Models/")
 
         # yolo models/facial ladmarks models
-        self.models()
+        self.models(tiny)
 
     # create directory if is not exist.
 
@@ -64,7 +64,7 @@ class DriverSafety():
 
     # Yolo Models/Facial Landmarks
 
-    def models(self):
+    def models(self, tiny):
 
         # dlib model
         FACE_LANDMARKS = self.models_path+"shape_predictor_68_face_landmarks.dat"
@@ -82,15 +82,16 @@ class DriverSafety():
         # yolov4_tiny->low accuracy, high fps
         # yolov4->high accuracy, low fps
 
-        self.net = cv2.dnn.readNet(
-            self.models_path+"yolov4-tiny_training_last.weights",
-            self.models_path+"yolov4-tiny_testing.cfg"
-        )
-
-        # self.net = cv2.dnn.readNet(
-        #    self.models_path+"yolov4_training_last.weights",
-        #    self.models_path+"yolov4_testing.cfg"
-        # )
+        if tiny:
+            self.net = cv2.dnn.readNet(
+                self.models_path+"yolov4-tiny_training_last.weights",
+                self.models_path+"yolov4-tiny_testing.cfg"
+            )
+        else:
+            self.net = cv2.dnn.readNet(
+                self.models_path+"yolov4_training_last.weights",
+                self.models_path+"yolov4_testing.cfg"
+            )
 
         # classes
         self.classes = ("person", "phone", "smoke")
@@ -377,7 +378,6 @@ class DriverSafety():
         img = img[:-4]  # drop jpg extension
 
         self.anomalies[img] = base64_image
-
 
     def stop_video_stream(self):
 

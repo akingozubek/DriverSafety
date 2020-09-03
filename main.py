@@ -13,6 +13,7 @@ import playsound
 from imutils import face_utils
 from scipy.spatial import distance as dist
 
+
 class DriverSafety():
 
     def __init__(self, camera=0, tiny=True):
@@ -100,8 +101,8 @@ class DriverSafety():
         # classes
         self.classes = ("person", "phone", "smoke")
 
-
     # threads start function
+
     def start_threads(self, target_, args_=()):
 
         t = Thread(target=target_, args=args_)
@@ -109,8 +110,8 @@ class DriverSafety():
         t.start()
         t.join()
 
-
     # Camera Run
+
     def start_video_stream(self, camera):
 
         time.sleep(2.0)  # waiting for camera build up
@@ -156,7 +157,6 @@ class DriverSafety():
         # stop processing
         self.stop_video_stream()
 
-
     def histogram_equalization(self):
 
         # divide blue,green,red channels
@@ -168,7 +168,6 @@ class DriverSafety():
 
         # combine channels->frame.
         self.frame = np.dstack((b_ch, g_ch, r_ch))
-
 
     def camera_blocked_detection(self):
 
@@ -240,12 +239,12 @@ class DriverSafety():
                 confidence = str(round(confidences[i], 2))
                 cv2.rectangle(self.frame, (x, y), (x+w, y+h), color, 1)
                 cv2.putText(self.frame, label+confidence, (x, y+20),
-                        self.font, 2, (255, 255, 255), 2)
+                            self.font, 2, (255, 255, 255), 2)
         except:
             pass
 
-
     # Calculate eye aspect ratio
+
     def find_eye_aspect_ratio(self, eye):
 
         first_height = dist.euclidean(eye[1], eye[5])
@@ -256,8 +255,8 @@ class DriverSafety():
 
         return eye_aspect_ratio
 
-
     # Face and Eye detection with dlib
+
     def face_and_eyes_detection(self):
 
         self.rects = self.detector(self.gray, 0)
@@ -277,8 +276,8 @@ class DriverSafety():
             self.drowsiness_detection(ear)
             self.put_text_video_stream("EAR", ear, 250, 30)
 
-
     # if driver look another direction long time, run warning and save image
+
     def attention_detection(self):
 
         try:
@@ -294,22 +293,22 @@ class DriverSafety():
         except:
             pass
 
-
     # if detect cigarette, run warning and save image
+
     def smoke_detection(self):
 
         self.smoke_counter = self.object_control(
             2, self.smoke_counter, "Smoke", 3, "SmokeWarning.mp3")
 
-
     # if detect phone, run warning and save image
+
     def phone_detection(self):
 
         self.phone_counter = self.object_control(
             1, self.phone_counter, "Phone", 4, "PhoneWarning.mp3")
 
-
     # control smoke and phone
+
     def object_control(self, class_id, counter, error, error_code, warning_name):
         try:
             control = True if class_id in self.control_class_id else False
@@ -329,8 +328,8 @@ class DriverSafety():
         except:
             return counter
 
-
     # if eyes aspect ratio < identified threshold. run warning and save image.
+
     def drowsiness_detection(self, ear):
 
         if ear < self.EYES_AR_THRESHOLD:
@@ -342,15 +341,15 @@ class DriverSafety():
         else:
             self.drowsiness_counter = 0
 
-
     # play warning sounds
+
     def warning(self, file):
 
         path = self.alert_path+file
         playsound.playsound(path)
 
-
     # error time control, if error is same, must be wait 5(changeable) second save it.
+
     def error_time_control(self, error, error_code):
 
         if error == self.last_err:
@@ -359,8 +358,8 @@ class DriverSafety():
         else:
             self.save_image(error, error_code)
 
-
     # if detected any anomaly, save it.
+
     def save_image(self, error, error_code):
 
         self.last_err_time = time.time()
@@ -377,8 +376,8 @@ class DriverSafety():
 
         self.json_data(img, base64_image)
 
-
     # image to base64 format
+
     def image_to_base64(self):
 
         flag, encoded_image = cv2.imencode(".jpg", self.frame)
@@ -386,7 +385,7 @@ class DriverSafety():
         base64_image = base64_image.decode("ascii")
         return base64_image
 
-    #base64 to json
+    # base64 to json
     def json_data(self, img, base64_image):
 
         img = img[:-4]  # drop jpg extension
@@ -399,16 +398,16 @@ class DriverSafety():
 
         self.anomalies[img] = base64_image
 
-
     # put text camera screen, may be deleted
+
     def put_text_video_stream(self, text, value, x, y):
         cv2.putText(self.frame, text + " : {:.3f}".format(value), (x, y),
                     self.font, 2, (0, 0, 0), 2)
 
-
     # release camera, close camera window and log it.
+
     def stop_video_stream(self):
-    
+
         self.camera.release()
         cv2.destroyAllWindows()
 
