@@ -4,7 +4,7 @@ import json
 import requests
 
 param = {'video': 0}
-response = requests.get("http://192.168.10.110:8080/detection", params=param)
+response = requests.get("http://localhost/detection", params=param)
 json_data = response.json()
 
 for k, v in json_data.items():

@@ -13,23 +13,17 @@ import playsound
 from imutils import face_utils
 from scipy.spatial import distance as dist
 
-# Sesler->Sounds Klasöründe
-# Modeller->Models Klasöründe
-# Resimler->Images Klasörüne
-
-
 class DriverSafety():
 
-    def __init__(self, camera=0, tiny=False):
-        """ 
-        Document will be added.
-        """
-        # Thresholds
+    def __init__(self, camera=0, tiny=True):
+
+        # Threshold Variables
+        # yolo-tiny 5.0~5.5 fps, yolo 0.7~0.8 fps
         self.EYES_AR_THRESHOLD = 0.24  # Eyes aspect ratio threshold
-        self.EYE_AR_CONSEC_FRAMES = 30  # drowsiness frames count
-        self.OBJECT_CONSEC_FRAMES = 30  # detect object frames count
-        self.COVER_CONSEC_FRAMES = 30  # cover camera frames count
-        self.ATTENTION_CONSEC_FRAMES = 60  # attenion detect frames count
+        self.EYE_AR_CONSEC_FRAMES = 25  # drowsiness frames count
+        self.OBJECT_CONSEC_FRAMES = 15  # detect object frames count
+        self.COVER_CONSEC_FRAMES = 25  # cover camera frames count
+        self.ATTENTION_CONSEC_FRAMES = 25  # attenion detect frames count
         self.HIST_EQU_THRESHOLD = 0.3  # histogram equalization threshold
 
         # Counters
@@ -50,6 +44,9 @@ class DriverSafety():
         self.last_err = ""
         self.last_err_time = 0
 
+        # for saving all anomalies run time.
+        self.anomalies = dict()
+
         # Create some directory
         self.alert_path = self.create_path("Sounds/")
         self.save_image_path = self.create_path("Images/")
@@ -63,9 +60,7 @@ class DriverSafety():
 
     # create directory if is not exist.
     def create_path(self, path):
-        """ 
-        Document will be added.
-        """
+
         try:
             os.mkdir(path)
             return path
@@ -75,9 +70,7 @@ class DriverSafety():
     # Yolo Models/Facial Landmarks
 
     def models(self, tiny):
-        """ 
-        Document will be added.
-        """
+
         # dlib model
         FACE_LANDMARKS = self.models_path+"shape_predictor_68_face_landmarks.dat"
         self.detector = dlib.get_frontal_face_detector()
@@ -107,38 +100,28 @@ class DriverSafety():
         # classes
         self.classes = ("person", "phone", "smoke")
 
+
     # threads start function
     def start_threads(self, target_, args_=()):
-        """ 
-        Document will be added.
-        """
+
         t = Thread(target=target_, args=args_)
         t.daemon = True
         t.start()
         t.join()
 
+
     # Camera Run
     def start_video_stream(self, camera):
-        """ 
-        Document will be added.
-        """
+
         time.sleep(2.0)  # waiting for camera build up
 
-        self.log_file("Camera Opened")  # Camera Open Log
-        frame = 0
         while True:
-            print("frame:", frame)
-
-            print(time.strftime("%X"))
 
             ret, self.frame = camera.read()  # read camera
-            frame += 1
+
             # if camera does not respond, shuts down system
             if not ret:
                 break
-
-            # if not using camera can be activated.
-            # self.frame=cv2.rotate(self.frame, cv2.ROTATE_90_CLOCKWISE)
 
             # resize frame
             self.frame = imutils.resize(self.frame, width=480, height=480)
@@ -173,6 +156,7 @@ class DriverSafety():
         # stop processing
         self.stop_video_stream()
 
+
     def histogram_equalization(self):
 
         # divide blue,green,red channels
@@ -185,10 +169,9 @@ class DriverSafety():
         # combine channels->frame.
         self.frame = np.dstack((b_ch, g_ch, r_ch))
 
+
     def camera_blocked_detection(self):
-        """ 
-        Document will be added.
-        """
+
         # if camera blocked, when reach specified time, run warning and save image.
         self.cover_counter += 1
 
@@ -203,9 +186,7 @@ class DriverSafety():
     # Yolo Object Detection
 
     def object_detection(self):
-        """ 
-        Document will be added.
-        """
+
         height, width, _ = self.frame.shape
 
         # will be drawn box list, scores list and object id list
@@ -257,17 +238,16 @@ class DriverSafety():
                 x, y, w, h = boxes[i]
                 label = str(self.classes[class_ids[i]])
                 confidence = str(round(confidences[i], 2))
-                #cv2.rectangle(self.frame, (x, y), (x+w, y+h), color, 1)
-                # cv2.putText(self.frame, label+confidence, (x, y+20),
-                #            self.font, 2, (255, 255, 255), 2)
+                cv2.rectangle(self.frame, (x, y), (x+w, y+h), color, 1)
+                cv2.putText(self.frame, label+confidence, (x, y+20),
+                        self.font, 2, (255, 255, 255), 2)
         except:
             pass
 
+
     # Calculate eye aspect ratio
     def find_eye_aspect_ratio(self, eye):
-        """ 
-        Document will be added.
-        """
+
         first_height = dist.euclidean(eye[1], eye[5])
         second_height = dist.euclidean(eye[2], eye[4])
         eye_width = dist.euclidean(eye[0], eye[3])
@@ -276,11 +256,10 @@ class DriverSafety():
 
         return eye_aspect_ratio
 
+
     # Face and Eye detection with dlib
     def face_and_eyes_detection(self):
-        """ 
-        Document will be added.
-        """
+
         self.rects = self.detector(self.gray, 0)
 
         for rect in self.rects:
@@ -296,14 +275,11 @@ class DriverSafety():
             ear = (left_ear + right_ear) / 2.0
 
             self.drowsiness_detection(ear)
-            #self.put_text_video_stream("EAR", ear, 250, 30)
+            self.put_text_video_stream("EAR", ear, 250, 30)
+
 
     # if driver look another direction long time, run warning and save image
-
     def attention_detection(self):
-        """ 
-        Document will be added.
-        """
 
         try:
             control = True if 0 in self.control_class_id else False
@@ -318,26 +294,22 @@ class DriverSafety():
         except:
             pass
 
-    # if detect cigarette, run warning and save image
 
+    # if detect cigarette, run warning and save image
     def smoke_detection(self):
-        """ 
-        Document will be added.
-        """
 
         self.smoke_counter = self.object_control(
             2, self.smoke_counter, "Smoke", 3, "SmokeWarning.mp3")
 
-    # if detect phone, run warning and save image
 
+    # if detect phone, run warning and save image
     def phone_detection(self):
-        """ 
-        Document will be added.
-        """
 
         self.phone_counter = self.object_control(
             1, self.phone_counter, "Phone", 4, "PhoneWarning.mp3")
 
+
+    # control smoke and phone
     def object_control(self, class_id, counter, error, error_code, warning_name):
         try:
             control = True if class_id in self.control_class_id else False
@@ -357,12 +329,10 @@ class DriverSafety():
         except:
             return counter
 
-    # if eyes aspect ratio < identified threshold. run warning and save image.
 
+    # if eyes aspect ratio < identified threshold. run warning and save image.
     def drowsiness_detection(self, ear):
-        """ 
-        Document will be added.
-        """
+
         if ear < self.EYES_AR_THRESHOLD:
             self.drowsiness_counter += 1
             if self.drowsiness_counter >= self.EYE_AR_CONSEC_FRAMES:
@@ -372,58 +342,51 @@ class DriverSafety():
         else:
             self.drowsiness_counter = 0
 
+
     # play warning sounds
     def warning(self, file):
-        """ 
-        Document will be added.
-        """
 
         path = self.alert_path+file
         playsound.playsound(path)
 
+
     # error time control, if error is same, must be wait 5(changeable) second save it.
     def error_time_control(self, error, error_code):
-        """ 
-        Document will be added.
-        """
+
         if error == self.last_err:
             if time.time()-self.last_err_time > 5:
                 self.save_image(error, error_code)
         else:
             self.save_image(error, error_code)
 
+
     # if detected any anomaly, save it.
     def save_image(self, error, error_code):
-        """ 
-        Document will be added.
-        """
+
         self.last_err_time = time.time()
 
         img = "{}_{}_{}.jpg".format(error_code, error, self.last_err_time)
 
         saved_img = self.save_image_path+img
 
-        #cv2.imwrite(saved_img, self.frame)
+        cv2.imwrite(saved_img, self.frame)
 
-        self.log_file(error)
         self.err = error
 
         base64_image = self.image_to_base64()
 
         self.json_data(img, base64_image)
 
-    # image to base64 format
 
+    # image to base64 format
     def image_to_base64(self):
-        """
-        Document will be added
-        """
 
         flag, encoded_image = cv2.imencode(".jpg", self.frame)
         base64_image = base64.b64encode(encoded_image)
-        base64_image = base64_image.decode("utf-8")
+        base64_image = base64_image.decode("ascii")
         return base64_image
 
+    #base64 to json
     def json_data(self, img, base64_image):
 
         img = img[:-4]  # drop jpg extension
@@ -434,30 +397,18 @@ class DriverSafety():
         with open(saved_path, 'a') as outfile:
             json.dump(data, outfile)
 
-    # logs
-    def log_file(self, err):
-        """ 
-        Document will be added.
-        """
+        self.anomalies[img] = base64_image
 
-        date = time.strftime("%x")
-        _time = time.strftime("%X")
-        with open("log.txt", "a") as f:
-            current_log = "{} {} {}\n".format(date, _time, err)
-            f.write(current_log)
 
     # put text camera screen, may be deleted
-    # def put_text_video_stream(self, text, value, x, y):
-    #    cv2.putText(self.frame, text + " : {:.3f}".format(value), (x, y),
-    #                self.font, 2, (0, 0, 0), 2)
+    def put_text_video_stream(self, text, value, x, y):
+        cv2.putText(self.frame, text + " : {:.3f}".format(value), (x, y),
+                    self.font, 2, (0, 0, 0), 2)
+
 
     # release camera, close camera window and log it.
-
     def stop_video_stream(self):
-        """ 
-        Document will be added.
-        """
-        self.log_file("Camera Closed")
+    
         self.camera.release()
         cv2.destroyAllWindows()
 

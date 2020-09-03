@@ -3,7 +3,7 @@ import time
 from threading import Thread
 
 import cv2
-from flask import Flask, Response, jsonify, redirect, request, url_for
+from flask import Flask, Response, jsonify, redirect, request, url_for, render_template
 from waitress import serve
 from werkzeug.utils import secure_filename
 
@@ -20,14 +20,14 @@ app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = UPLOAD_DIRECTORY
 
 
-ALLOWED_EXTENSION = {"mp4"}
+ALLOWED_EXTENSION = {"mp4","avi","wmv"}
 
 
 def allowed_extension(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSION
 
 
-@app.route("/videofile", methods=["POST"])
+@app.route("/", methods=["GET","POST"])
 def main():
 
     if request.method == "POST":
@@ -47,14 +47,11 @@ def main():
             filename = secure_filename(file.filename)
             file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
             file.save(file_path)
-            response = jsonify({'message': 'File successfully uploaded'})
-            response.status_code = 201
-            # return response
             return redirect(url_for("detectDriver", video=file_path))
 
         else:
             response = jsonify(
-                {'message': 'Allowed file types are mp4'})
+                {'message': 'Allowed file types are mp4, avi, wmv'})
             response.status_code = 400
             return response
 
@@ -66,8 +63,6 @@ def detectDriver():
     if request.method == "GET":
         args = request.args.get("video")
 
-        if args == "0":
-            args = int(args)
         driver = DriverSafety(args)
 
         while True:
@@ -114,4 +109,4 @@ def video_feed():
 
 if __name__ == "__main__":
     #app.run(host="192.168.10.110", port=8080, debug=True)
-    serve(app, host="192.168.10.110", port=8080)
+    serve(app, host="localhost", port=8080)

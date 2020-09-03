@@ -11,7 +11,7 @@ ap.add_argument("-f", "--file", required=True,
 args = vars(ap.parse_args())
 
 param = {'file': open(args["file"], "rb")}
-response = requests.post("http://192.168.10.110:8080/videofile", files=param)
+response = requests.post("http://localhost:8080/", files=param)
 json_data = response.json()
 
 for k, v in json_data.items():

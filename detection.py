@@ -47,7 +47,6 @@ class DriverSafety():
 
         # Create some directory
         self.alert_path = self.create_path("Sounds/")
-        self.save_image_path = self.create_path("Images/")
         self.models_path = self.create_path("Models/")
 
         # yolo models/facial ladmarks models
@@ -113,8 +112,6 @@ class DriverSafety():
 
         if not ret:
             return ret
-        # if not using camera can be activated.
-        # self.frame=cv2.rotate(self.frame, cv2.ROTATE_90_CLOCKWISE)
 
         # resize frame
         self.frame = imutils.resize(self.frame, width=480, height=480)
@@ -360,11 +357,6 @@ class DriverSafety():
 
         img = "{}_{}_{}.jpg".format(error_code, error, self.last_err_time)
 
-        saved_img = self.save_image_path+img
-
-        #cv2.imwrite(saved_img, self.frame)
-
-        self.log_file(error)
         self.err = error
 
         base64_image = self.image_to_base64()
@@ -384,34 +376,17 @@ class DriverSafety():
 
         img = img[:-4]  # drop jpg extension
 
-        data = {img: base64_image}
-        saved_path = self.save_image_path+img+".json"
-
         self.anomalies[img] = base64_image
-        # with open(saved_path, 'a') as outfile:
-        #    json.dump(data, outfile)
 
-    # logs
-
-    def log_file(self, err):
-
-        date = time.strftime("%x")
-        _time = time.strftime("%X")
-        with open("log.txt", "a") as f:
-            current_log = "{} {} {}\n".format(date, _time, err)
-            f.write(current_log)
 
     def stop_video_stream(self):
 
         try:
-            self.log_file("Camera Closed")
             self.camera.release()
-            cv2.destroyAllWindows()
         except:
             pass
         finally:
             self.camera.release()
-            cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
