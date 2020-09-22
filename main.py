@@ -49,7 +49,7 @@ class DriverSafety():
         self.OBJECT_CONSEC_FRAMES = 15  # Detect object frames count
         self.COVER_CONSEC_FRAMES = 25  # Cover camera frames count
         self.ATTENTION_CONSEC_FRAMES = 25  # Attenion detect frames count
-        self.HAND_CONSEC_FRAMES = 60 # Hand frames count
+        self.HAND_CONSEC_FRAMES = 60  # Hand frames count
         self.HIST_EQU_THRESHOLD = 0.3  # Histogram equalization threshold
 
 
@@ -74,11 +74,11 @@ class DriverSafety():
         self.hand_timer = 0
 
 
-    # Draw object warning text coordinate 
+    # Draw object warning text coordinate
     def object_coordinate(self):
         self.smoke_x = 0
         self.smoke_y = 0
-        self.phone_x = 0 
+        self.phone_x = 0
         self.phone_y = 0
 
 
@@ -116,7 +116,7 @@ class DriverSafety():
             self.net = cv2.dnn.readNet(
                 self.models_path+"yolov4-tiny_training_last.weights",
                 self.models_path+"yolov4-tiny_testing.cfg")
-            
+
             self.net_hand = cv2.dnn.readNet(
                 self.models_path+"yolo-tiny_hand.weights",
                 self.models_path+"yolo-tiny_hand.cfg")
@@ -170,7 +170,7 @@ class DriverSafety():
                 self.start_threads(self.camera_blocked_detection,
                                    args_=("CAMERA BLOCKED", 5))
 
-            # if grayscale image is dark, 
+            # if grayscale image is dark,
             # It is made brighter using Histogram Equalizer.
             if np.mean(self.gray)/255 < self.HIST_EQU_THRESHOLD:
                 self.histogram_equalization()
@@ -178,10 +178,12 @@ class DriverSafety():
             # Start object detection control,
             # Facial landmarks control and driver attention detection
             self.start_threads(self.object_detection,
-                               args_=(self.net, self.classes, "object detect"))
+                               args_=(self.net, self.classes,
+                                      "object detect"))
 
             self.start_threads(self.object_detection,
-                               args_=(self.net_hand, "hand", "hand detect"))
+                               args_=(self.net_hand, "hand",
+                                      "hand detect"))
 
             self.start_threads(self.face_and_eyes_detection)
 
@@ -204,7 +206,8 @@ class DriverSafety():
         self.stop_video_stream()
 
 
-    # Histogram equalization -> frame(blue,gray,red channels) and grayscale frame.
+    # Histogram equalization -> frame(blue,gray,red channels)
+    # and grayscale frame.
     # if frame is dark, frame will be lighter.
     def histogram_equalization(self):
 
@@ -246,7 +249,7 @@ class DriverSafety():
                 class_id = np.argmax(score)  # Object index
                 confidence = score[class_id]  # Score is detected object
 
-                # if score higher than threshold, 
+                # if score higher than threshold,
                 # Draw rectangle object coordinates
                 if confidence > 0.24:
                     center_x = int(detection[0]*self.width)
@@ -266,9 +269,9 @@ class DriverSafety():
 
             # Use control object detection
             self.control_class_id = class_ids.copy()
-        
+
         elif type_ == "hand detect":
-            
+
             # Use control hand detection
             self.hand_class_id = class_ids.copy()
 
@@ -306,9 +309,11 @@ class DriverSafety():
 
         first_height = dist.euclidean(eye[1], eye[5])
         second_height = dist.euclidean(eye[2], eye[4])
+
+        eye_height = first_height + second_height
         eye_width = dist.euclidean(eye[0], eye[3])
 
-        eye_aspect_ratio = (first_height + second_height) / (2.0 * eye_width)
+        eye_aspect_ratio = eye_height / (2.0 * eye_width)
 
         return eye_aspect_ratio
 
@@ -411,7 +416,7 @@ class DriverSafety():
             x_coord=self.phone_x,
             y_coord=self.phone_y
         )
-        
+
 
     # if hand detection, run warning(PHONE-SMOKE) and save image.
     def hand_detection(self):
@@ -476,7 +481,7 @@ class DriverSafety():
     # if camera blocked, run warning and save image.
     def camera_blocked_detection(self, error_name, error_code):
 
-        # if camera blocked, when reach specified time, 
+        # if camera blocked, when reach specified time,
         # run warning and save image.
         self.cover_counter += 1
 

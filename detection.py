@@ -73,11 +73,11 @@ class DriverSafety():
         self.hand_timer = 0
 
 
-    # Draw object warning text coordinate 
+    # Draw object warning text coordinate
     def object_coordinate(self):
         self.smoke_x = 0
         self.smoke_y = 0
-        self.phone_x = 0 
+        self.phone_x = 0
         self.phone_y = 0
 
 
@@ -172,15 +172,17 @@ class DriverSafety():
         # Start object detection control,
         # Facial landmarks control and driver attention detection
         self.start_threads(self.object_detection,
-                            args_=(self.net, self.classes, "object detect"))
+                           args_=(self.net, self.classes,
+                           "object detect"))
 
         self.start_threads(self.object_detection,
-                            args_=(self.net_hand, "hand", "hand detect"))
+                           args_=(self.net_hand, "hand",
+                           "hand detect"))
 
         self.start_threads(self.face_and_eyes_detection)
 
         self.start_threads(self.attention_detection,
-                            args_=("ATTENTION", 2))
+                           args_=("ATTENTION", 2))
 
         self.start_threads(self.phone_detection, args_=("PHONE", 4))
         self.start_threads(self.smoke_detection, args_=("SMOKE", 3))
@@ -189,7 +191,8 @@ class DriverSafety():
         return ret
 
 
-    # Histogram equalization -> frame(blue,gray,red channels) and grayscale frame.
+    # Histogram equalization -> frame(blue,gray,red channels)
+    # and grayscale frame.
     # if frame is dark, frame will be lighter.
     def histogram_equalization(self):
 
@@ -231,7 +234,7 @@ class DriverSafety():
                 class_id = np.argmax(score)  # Object index
                 confidence = score[class_id]  # Score is detected object
 
-                # if score higher than threshold, 
+                # if score higher than threshold,
                 # draw rectangle object coordinates
                 if confidence > 0.24:
                     center_x = int(detection[0]*self.width)
@@ -251,9 +254,9 @@ class DriverSafety():
 
             # Use control object detection
             self.control_class_id = class_ids.copy()
-        
+
         elif type_ == "hand detect":
-    
+
             self.hand_class_id = class_ids.copy()
 
         idx = cv2.dnn.NMSBoxes(boxes, confidences, 0.24, 0.4)
@@ -289,9 +292,11 @@ class DriverSafety():
 
         first_height = dist.euclidean(eye[1], eye[5])
         second_height = dist.euclidean(eye[2], eye[4])
+
+        eye_height = first_height + second_height
         eye_width = dist.euclidean(eye[0], eye[3])
 
-        eye_aspect_ratio = (first_height + second_height) / (2.0 * eye_width)
+        eye_aspect_ratio = eye_height / (2.0 * eye_width)
 
         return eye_aspect_ratio
 
@@ -503,7 +508,7 @@ class DriverSafety():
 
         base64_image = base64.b64encode(encoded_image)
         base64_image = base64_image.decode("ascii")
-        
+
         return base64_image
 
     # base64 to json
