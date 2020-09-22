@@ -8,3 +8,5 @@ __pycache__
 log.txt
 yolov4_training_last.weights
 yolov4_testing.cfg
+yolo_hand.cfg
+yolo_hand.weights
