@@ -293,8 +293,9 @@ class DriverSafety():
                     self.phone_y = y+h
 
                 confidence = round(confidences[i], 2)
-                #cv2.rectangle(self.frame, (x, y), (x+w, y+h), color, 1)
-                #self.put_text_video_stream(label, confidence, x, y+20)
+                if label == "h":
+                    cv2.rectangle(self.frame, (x, y+100), (x+w, (y+h)+100), color, 1)
+                    self.put_text_video_stream(label, confidence, x, y+20)
 
         except:
             if type_ == "object detect":

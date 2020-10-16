@@ -1,16 +1,14 @@
 import os
-import time
-from threading import Thread
 
 import cv2
-from flask import Flask, Response, jsonify, redirect, request, url_for, render_template
-from waitress import serve
+from flask import (Flask, Response, jsonify, redirect,
+                   request, url_for)
 from werkzeug.utils import secure_filename
 
 from detection import DriverSafety
 
-outputFrame = None
 
+outputFrame = None
 
 UPLOAD_DIRECTORY = "Uploads"
 if not os.path.exists(UPLOAD_DIRECTORY):
@@ -18,7 +16,6 @@ if not os.path.exists(UPLOAD_DIRECTORY):
 
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = UPLOAD_DIRECTORY
-
 
 ALLOWED_EXTENSION = {"mp4", "avi", "wmv"}
 
@@ -54,7 +51,16 @@ def main():
                 {'message': 'Allowed file types are mp4, avi, wmv'})
             response.status_code = 400
             return response
-
+    elif request.method == "GET":
+        return """
+        <!doctype html>
+        <title>Upload new File</title>
+        <h1>Upload new File</h1>
+        <form method=post enctype=multipart/form-data>
+        <input type=file name=file>
+        <input type=submit value=Upload>
+        </form>
+        """
 
 @app.route('/detection', methods=["GET"])
 def detectDriver():
@@ -108,5 +114,4 @@ def video_feed():
 
 
 if __name__ == "__main__":
-    #app.run(host="192.168.10.110", port=8080, debug=True)
-    serve(app, host="localhost", port=8080)
+    app.run(host="localhost", port=8080, debug=False)
