@@ -17,3 +17,7 @@ Project works yolo-tiny models, if you want more accuracy you can download and u
 if you have any suggestion or question you can ask me.
 
 I can answer your question as far as I know.
+
+# License
+
+DriverSafety is MIT-licensed.
