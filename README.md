@@ -6,9 +6,10 @@ Project also has hand detection, but this feature is still under development. Yo
 
 Project has YOLO and dlib models. if you want to use project, you must compile darknet and dlib.
 <https://github.com/AlexeyAB/darknet>
+
 <http://dlib.net/compile.html>
 
-Project works main.py file, also you use app.py for API.
+Project works main.py file, also you can use app.py for API.
 
 Project works yolo-tiny models, if you want more accuracy you can download and use yolo models from this link:
 <https://drive.google.com/drive/folders/1XO3oXR1bhZBTK8fFoRNGmzUq7AZ3WFfp?usp=sharing>
