@@ -9,5 +9,4 @@ numpy==1.18.5
 opencv-python==4.4.0.40
 playsound==1.2.2
 scipy==1.4.1
-waitress==1.4.4
 Werkzeug==1.0.1
