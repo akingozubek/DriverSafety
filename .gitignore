@@ -4,7 +4,7 @@
 *.mp4
 *.pytest_cache
 __pycache__
-
+venv
 log.txt
 yolov4_training_last.weights
 yolov4_testing.cfg
